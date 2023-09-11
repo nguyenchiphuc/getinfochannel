@@ -62,15 +62,16 @@ class GetOrderList extends Command
               [
                 'channel_id' => $channel_id,
                 'order_link' => $data->order_link,
-                'current_subs' => $data->current_sub
+                'current_subs' => !empty($data->current_sub) ? $data->current_sub : 0
               ],
               [
                 'channel_id' => $channel_id,
                 'order_link' => $data->order_link,
-                'current_subs' => $data->current_sub
+                'current_subs' => !empty($data->current_sub) ? $data->current_sub : 0
               ]
             );
             app('App\Http\Controllers\API\GetInfoController')->getVideos($channel);
+            echo $channel_id."\n";
           }
         }
       }
