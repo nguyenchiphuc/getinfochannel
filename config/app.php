@@ -14,7 +14,8 @@ return [
     | any other location as required by the application or its packages.
     |
     */
-
+    'limit' => env('LIMIT', 12),
+    'log_delete' => env('LOG_DELETE', 2),
     'name' => env('APP_NAME', 'Laravel'),
 
     /*

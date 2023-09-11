@@ -40,9 +40,7 @@ class GetInfoController extends BaseController
         $items = json_decode($ytInitialData);
         $array = [];
         foreach ($items->contents->twoColumnBrowseResultsRenderer->tabs as $tabs) {
-
-          if ((@$tabs->tabRenderer->title == 'Video' || @$tabs->tabRenderer->title == 'Videos') && @$tabs->tabRenderer) {
-
+          if ((strpos(@$tabs->tabRenderer->title, 'Video') !== false) && !empty($tabs->tabRenderer)) {
             foreach ($tabs->tabRenderer->content->richGridRenderer->contents as $content) {
               if (@$content->richItemRenderer) {
                 $video = $content->richItemRenderer->content->videoRenderer;

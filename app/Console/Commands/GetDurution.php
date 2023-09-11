@@ -29,26 +29,30 @@ class GetDurution extends Command
    */
   public function handle()
   {
-    $channels = Channel::orderBy('id', 'desc')->get();
+    $limit = round(Channel::count() / config('app.limit') / 3) + 20;
+    $channels = Channel::orderBy('id', 'desc')->where('status', 0)->limit($limit)->get();
     foreach ($channels as $channel) {
       $videos = [];
       echo $channel->channel_id . "\n";
-      $listVideo = app('App\Http\Controllers\API\GetInfoController')->getListVideoFunc($channel->channel_id, 0, 0);
-      foreach ($channel->videos as $item) {
-        if (count($listVideo) > 0) {
-          foreach ($listVideo as $video1) {
-            if ($video1['id'] == $item['id']) {
-              @$item['duration'] = (int) @$video1['duration'];
+      if ($channel->videos) {
+        $listVideo = app('App\Http\Controllers\API\GetInfoController')->getListVideoFunc($channel->channel_id, 0, 0);
+        foreach ($channel->videos as $item) {
+          if (count($listVideo) > 0) {
+            foreach ($listVideo as $video1) {
+              if ($video1['id'] == $item['id']) {
+                @$item['duration'] = (int) @$video1['duration'];
+              }
             }
+          } else {
+            $duration = app('App\Http\Controllers\API\GetInfoController')->getDuration($item['href']);
+            @$item['duration'] = (int) $duration;
           }
-        } else {
-          $duration = app('App\Http\Controllers\API\GetInfoController')->getDuration($item['href']);
-          @$item['duration'] = (int) $duration;
+          $videos[] = $item;
         }
-        $videos[] = $item;
+        $channel->videos = $videos;
+        $channel->status = 1;
+        $channel->save();
       }
-      $channel->videos = $videos;
-      $channel->save();
     }
     return Command::SUCCESS;
   }

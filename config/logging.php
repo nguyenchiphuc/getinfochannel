@@ -57,6 +57,24 @@ return [
             'ignore_exceptions' => false,
         ],
 
+        'custom' => [
+            'driver' => 'custom',
+            'type' => 'log',
+            'via' => \App\Services\Logs\LogMonolog::class,
+        ],
+
+        'api-in' => [
+            'driver' => 'custom',
+            'type' => 'api-in',
+            'via' => \App\Services\Logs\LogMonolog::class,
+        ],
+
+        'api-out' => [
+            'driver' => 'custom',
+            'type' => 'api-out',
+            'via' => \App\Services\Logs\LogMonolog::class,
+        ],
+
         'single' => [
             'driver' => 'single',
             'path' => storage_path('logs/laravel.log'),

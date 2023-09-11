@@ -20,7 +20,7 @@ class GetVideos extends Command
    *
    * @var string
    */
-  protected $description = 'GetDurution';
+  protected $description = 'GetVideos';
 
   /**
    * Execute the console command.
@@ -29,8 +29,10 @@ class GetVideos extends Command
    */
   public function handle()
   {
-    $channels = Channel::orderBy('id', 'desc')->where('videos', null)->orWhere('current_subs', 0)->get();
+    $limit = round(Channel::count() / config('app.limit') / 3) + 20;
+    $channels = Channel::orderBy('id', 'desc')->where('status', 0)->limit($limit)->get();
     foreach ($channels as $channel) {
+      echo $channel->channel_id . "\n";
       app('App\Http\Controllers\API\GetInfoController')->getVideos($channel);
     }
     return Command::SUCCESS;
