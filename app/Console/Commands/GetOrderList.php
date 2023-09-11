@@ -59,18 +59,14 @@ class GetOrderList extends Command
           foreach ($res->data as $data) {
             $channel_id = $data->channel_id;
             if(!empty($channel_id)){
-              $channel = Channel::updateOrCreate(
-                [
-                  'channel_id' => $channel_id,
-                ],
-                [
+              $channel = Channel::where('channel_id', $channel_id)->first();
+              if(!$channel){
+                $channel = Channel::create([
                   'channel_id' => $channel_id,
                   'order_link' => $data->order_link,
                   'api_url' => $item->api_url,
                   'current_subs' => !empty($data->current_sub) ? $data->current_sub : 0
-                ]
-              );
-              if($channel){
+                ]);
                 app('App\Http\Controllers\API\GetInfoController')->getVideos($channel);
                 echo $channel_id."\n";
               }
