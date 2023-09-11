@@ -58,7 +58,7 @@ class GetOrderList extends Command
         if ($res && $res->data) {
           foreach ($res->data as $data) {
             $channel_id = $data->channel_id;
-            if($channel_id){
+            if(!empty($channel_id)){
               $channel = Channel::updateOrCreate(
                 [
                   'channel_id' => $channel_id,
@@ -68,6 +68,7 @@ class GetOrderList extends Command
                 [
                   'channel_id' => $channel_id,
                   'order_link' => $data->order_link,
+                  'api_url' => $item->api_url,
                   'current_subs' => !empty($data->current_sub) ? $data->current_sub : 0
                 ]
               );

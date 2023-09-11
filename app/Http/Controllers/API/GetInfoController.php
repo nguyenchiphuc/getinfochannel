@@ -49,6 +49,26 @@ class GetInfoController extends BaseController
                 $arr = [];
                 $time = $video->lengthText->simpleText;
                 $publishedTimeText = $video->publishedTimeText->simpleText;
+                $timeKeywords = [
+                  'năm' => 'subYears',
+                  'tháng' => 'subMonths',
+                  'ngày' => 'subDays',
+                  'giờ' => 'subHours',
+                  'phút' => 'subMinutes',
+                ];
+                $newDateTime = Carbon::now();
+                // Tìm từ khóa thời gian trong chuỗi $publishedTimeText
+                foreach ($timeKeywords as $keyword => $method) {
+                  if (strpos($publishedTimeText, $keyword) !== false) {
+                    $arrTime = explode(" $keyword ", $publishedTimeText);
+                    if (count($arrTime)) {
+                      $timeCurrent = (int) $arrTime[0];
+                      $newDateTime = Carbon::now()->$method($timeCurrent);
+                      break; // Thoát khỏi vòng lặp khi đã tìm thấy từ khóa thời gian
+                    }
+                  }
+                }
+
                 $timeArr = explode(":", $time);
                 if (count($timeArr) > 2) {
                   $durationTime = $timeArr[0] * 60 * 60 + $timeArr[1] * 60 + $timeArr[2];
@@ -62,6 +82,7 @@ class GetInfoController extends BaseController
                 $arr['id'] = $id;
                 $arr['title'] = $title;
                 $arr['publishedTimeText'] = $publishedTimeText;
+                $arr['publishedAt'] = $newDateTime->format('Y-m-d H:i:s');
                 $array[] = $arr;
               }
             }
@@ -86,7 +107,7 @@ class GetInfoController extends BaseController
     $to = Carbon::createFromFormat('Y-m-d H:s:i', Carbon::now());
     $channel = Channel::where('channel_id', $string)->first();
     $params = ['connect_db' => 0, 'subscribe' => 0, 'videos' => [], 'channel_id' => $string, 'resutls' => 0];
-    if ($channel && $channel->videos) {
+    if ($channel && ($channel->videos || $channel->channel_videos)) {
       $params['connect_db'] = 1;
     } else {
       $channel = Channel::updateOrCreate(
@@ -99,22 +120,24 @@ class GetInfoController extends BaseController
     $this->getVideos($channel);
 
     $videosDiff = [];
-    if ($channel && $channel->videos) {
-      foreach ($channel->videos as $video) {
-        $from = Carbon::createFromFormat('Y-m-d H:s:i', Carbon::parse($video['published']));
+    if ($channel && ($channel->videos || $channel->channel_videos)) {
+      $channelVideos = strpos(json_encode($channel->videos), 'duration') !== false ? $channel->videos : $channel->channel_videos;
+
+      foreach ($channelVideos as $video) {
+        $from = Carbon::createFromFormat('Y-m-d H:s:i', Carbon::parse($video['publishedAt']));
         $video['diff'] = $to->diffInDays($from);
         $videosDiff[] = $video;
       }
       $params['subscribe'] = $channel->current_subs;
 
       $collection = collect($videosDiff)->filter(function ($item) use ($duration) {
-        return @$item['duration'] > $duration;
+        return @$item['duration'] >= $duration;
       })->values()->toArray();
       $collection = collect($collection)->filter(function ($item) use ($diffDay) {
         return @$item['diff'] > $diffDay - 1;
       })->values()->toArray();
       $params['videos'] = $collection;
-      $params['resutls'] = count($videosDiff);
+      $params['resutls'] = count($collection);
     }
 
     return response()->json($params);
@@ -156,7 +179,7 @@ class GetInfoController extends BaseController
           $title = $item->title->__toString();
           $arr['title'] = $title;
           $published = $item->published->__toString();
-          $arr['published'] = $published;
+          $arr['publishedAt'] = $published;
           if (count($listVideo) > 0) {
             foreach ($listVideo as $video1) {
               if ($video1['id'] == $video_id) {
@@ -172,6 +195,7 @@ class GetInfoController extends BaseController
       }
       if (count($array) > 0) {
         $channel->videos = $array;
+        $channel->channel_videos = $listVideo;
         $channel->save();
       }
     }
