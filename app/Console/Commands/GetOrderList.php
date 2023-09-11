@@ -30,7 +30,7 @@ class GetOrderList extends Command
    */
   public function handle()
   {
-    $states = ['pending'];
+    $states = ['pending', 'running'];
     $state = 'pending';
     $items =  User::where('status', 1)->get();
     foreach ($items as $item) {

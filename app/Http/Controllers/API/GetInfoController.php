@@ -188,9 +188,7 @@ class GetInfoController extends BaseController
             }
           }
 
-          if (strpos($title, '#shorts') === false) {
-            $array[] = $arr;
-          }
+          $array[] = $arr;
         }
       }
       if (count($array) > 0) {
