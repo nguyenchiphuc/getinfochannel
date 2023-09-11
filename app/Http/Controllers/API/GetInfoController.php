@@ -39,56 +39,61 @@ class GetInfoController extends BaseController
         $ytInitialData = $matches[1];
         $items = json_decode($ytInitialData);
         $array = [];
-        foreach ($items->contents->twoColumnBrowseResultsRenderer->tabs as $tabs) {
-          if ((strpos(@$tabs->tabRenderer->title, 'Video') !== false) && !empty($tabs->tabRenderer)) {
-            foreach ($tabs->tabRenderer->content->richGridRenderer->contents as $content) {
-              if (@$content->richItemRenderer) {
-                $video = $content->richItemRenderer->content->videoRenderer;
-                $id = $video->videoId;
-                $title = $video->title->runs[0]->text;
-                $arr = [];
-                $time = $video->lengthText->simpleText;
-                $publishedTimeText = $video->publishedTimeText->simpleText;
-                $timeKeywords = [
-                  'năm' => 'subYears',
-                  'tháng' => 'subMonths',
-                  'ngày' => 'subDays',
-                  'giờ' => 'subHours',
-                  'phút' => 'subMinutes',
-                ];
-                $newDateTime = Carbon::now();
-                // Tìm từ khóa thời gian trong chuỗi $publishedTimeText
-                foreach ($timeKeywords as $keyword => $method) {
-                  if (strpos($publishedTimeText, $keyword) !== false) {
-                    $arrTime = explode(" $keyword ", $publishedTimeText);
-                    if (count($arrTime)) {
-                      $timeCurrent = (int) $arrTime[0];
-                      $newDateTime = Carbon::now()->$method($timeCurrent);
-                      break; // Thoát khỏi vòng lặp khi đã tìm thấy từ khóa thời gian
+        try{
+          if(!empty($items->contents)){
+            foreach ($items->contents->twoColumnBrowseResultsRenderer->tabs as $tabs) {
+              if ((strpos(@$tabs->tabRenderer->title, 'Video') !== false) && !empty($tabs->tabRenderer)) {
+                foreach ($tabs->tabRenderer->content->richGridRenderer->contents as $content) {
+                  if (@$content->richItemRenderer) {
+                    $video = $content->richItemRenderer->content->videoRenderer;
+                    $id = $video->videoId;
+                    $title = $video->title->runs[0]->text;
+                    $arr = [];
+                    $time = $video->lengthText->simpleText;
+                    $publishedTimeText = $video->publishedTimeText->simpleText;
+                    $timeKeywords = [
+                      'năm' => 'subYears',
+                      'tháng' => 'subMonths',
+                      'ngày' => 'subDays',
+                      'giờ' => 'subHours',
+                      'phút' => 'subMinutes',
+                    ];
+                    $newDateTime = Carbon::now();
+                    // Tìm từ khóa thời gian trong chuỗi $publishedTimeText
+                    foreach ($timeKeywords as $keyword => $method) {
+                      if (strpos($publishedTimeText, $keyword) !== false) {
+                        $arrTime = explode(" $keyword ", $publishedTimeText);
+                        if (count($arrTime)) {
+                          $timeCurrent = (int) $arrTime[0];
+                          $newDateTime = Carbon::now()->$method($timeCurrent);
+                          break; // Thoát khỏi vòng lặp khi đã tìm thấy từ khóa thời gian
+                        }
+                      }
                     }
+  
+                    $timeArr = explode(":", $time);
+                    if (count($timeArr) > 2) {
+                      $durationTime = $timeArr[0] * 60 * 60 + $timeArr[1] * 60 + $timeArr[2];
+                    } else if (count($timeArr) > 1) {
+                      $durationTime = $timeArr[0] * 60 + $timeArr[1];
+                    } else {
+                      $durationTime = $timeArr[0];
+                    }
+                    $arr['duration'] = $durationTime;
+                    $arr['time'] = $time;
+                    $arr['id'] = $id;
+                    $arr['title'] = $title;
+                    $arr['publishedTimeText'] = $publishedTimeText;
+                    $arr['publishedAt'] = $newDateTime->format('Y-m-d H:i:s');
+                    $array[] = $arr;
                   }
                 }
-
-                $timeArr = explode(":", $time);
-                if (count($timeArr) > 2) {
-                  $durationTime = $timeArr[0] * 60 * 60 + $timeArr[1] * 60 + $timeArr[2];
-                } else if (count($timeArr) > 1) {
-                  $durationTime = $timeArr[0] * 60 + $timeArr[1];
-                } else {
-                  $durationTime = $timeArr[0];
-                }
-                $arr['duration'] = $durationTime;
-                $arr['time'] = $time;
-                $arr['id'] = $id;
-                $arr['title'] = $title;
-                $arr['publishedTimeText'] = $publishedTimeText;
-                $arr['publishedAt'] = $newDateTime->format('Y-m-d H:i:s');
-                $array[] = $arr;
               }
             }
           }
+        }catch (\Exception $e) {
+          Log::error($channelId.' $items->contents->twoColumnBrowseResultsRenderer->tabs '.$e->getMessage());   
         }
-
         $collection = collect($array)->filter(function ($item) use ($duration) {
           return $item['duration'] > $duration;
         })->values()->toArray();
@@ -165,31 +170,35 @@ class GetInfoController extends BaseController
     curl_close($curl);
     // check xml
     if (preg_match('/<\?xml[^?]*\?>/', $response)) {
-      $xmlObject = simplexml_load_string($response);
-      $entry = $xmlObject->entry;
       $array = [];
-      if (count($entry) > 0) {
-        foreach ($entry as $item) {
-          $arr = [];
-          $video_id = str_replace('yt:video:', '', $item->id->__toString());
-          $href = 'https://www.youtube.com/watch?v=' . $video_id;
-          $arr['id'] = $video_id;
-          // $arr['du'] = $this->getDuration($href);
-          $arr['href'] = $href;
-          $title = $item->title->__toString();
-          $arr['title'] = $title;
-          $published = $item->published->__toString();
-          $arr['publishedAt'] = $published;
-          if (count($listVideo) > 0) {
-            foreach ($listVideo as $video1) {
-              if ($video1['id'] == $video_id) {
-                $arr['duration'] = (int) $video1['duration'];
+      try{
+        $xmlObject = simplexml_load_string($response);
+        $entry = $xmlObject->entry;
+        if (count($entry) > 0) {
+          foreach ($entry as $item) {
+            $arr = [];
+            $video_id = str_replace('yt:video:', '', $item->id->__toString());
+            $href = 'https://www.youtube.com/watch?v=' . $video_id;
+            $arr['id'] = $video_id;
+            // $arr['du'] = $this->getDuration($href);
+            $arr['href'] = $href;
+            $title = $item->title->__toString();
+            $arr['title'] = $title;
+            $published = $item->published->__toString();
+            $arr['publishedAt'] = $published;
+            if (count($listVideo) > 0) {
+              foreach ($listVideo as $video1) {
+                if ($video1['id'] == $video_id) {
+                  $arr['duration'] = (int) $video1['duration'];
+                }
               }
             }
-          }
 
-          $array[] = $arr;
+            $array[] = $arr;
+          }
         }
+      }catch (\Exception $e) {
+        Log::error($channel->channel_id.' simplexml_load_string($response) '.$e->getMessage());   
       }
       if (count($array) > 0) {
         $channel->videos = $array;
