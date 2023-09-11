@@ -58,20 +58,22 @@ class GetOrderList extends Command
         if ($res && $res->data) {
           foreach ($res->data as $data) {
             $channel_id = $data->channel_id;
-            $channel = Channel::updateOrCreate(
-              [
-                'channel_id' => $channel_id,
-                'order_link' => $data->order_link,
-                'current_subs' => !empty($data->current_sub) ? $data->current_sub : 0
-              ],
-              [
-                'channel_id' => $channel_id,
-                'order_link' => $data->order_link,
-                'current_subs' => !empty($data->current_sub) ? $data->current_sub : 0
-              ]
-            );
-            app('App\Http\Controllers\API\GetInfoController')->getVideos($channel);
-            echo $channel_id."\n";
+            if($channel_id){
+              $channel = Channel::updateOrCreate(
+                [
+                  'channel_id' => $channel_id,
+                  'order_link' => $data->order_link,
+                  'current_subs' => !empty($data->current_sub) ? $data->current_sub : 0
+                ],
+                [
+                  'channel_id' => $channel_id,
+                  'order_link' => $data->order_link,
+                  'current_subs' => !empty($data->current_sub) ? $data->current_sub : 0
+                ]
+              );
+              app('App\Http\Controllers\API\GetInfoController')->getVideos($channel);
+              echo $channel_id."\n";
+            }
           }
         }
       }
