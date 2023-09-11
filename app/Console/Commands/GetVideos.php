@@ -29,7 +29,7 @@ class GetVideos extends Command
    */
   public function handle()
   {
-    $channels = Channel::orderBy('id', 'desc')->where('videos', null)->get();
+    $channels = Channel::orderBy('id', 'desc')->where('videos', null)->orWhere('current_subs', 0)->get();
     foreach ($channels as $channel) {
       app('App\Http\Controllers\API\GetInfoController')->getVideos($channel);
     }

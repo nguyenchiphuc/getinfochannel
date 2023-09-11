@@ -30,7 +30,6 @@ class GetInfoController extends BaseController
     ));
 
     $response = curl_exec($curl);
-
     curl_close($curl);
     $collection = collect([]);
     if ($response != null) {
@@ -41,7 +40,9 @@ class GetInfoController extends BaseController
         $items = json_decode($ytInitialData);
         $array = [];
         foreach ($items->contents->twoColumnBrowseResultsRenderer->tabs as $tabs) {
-          if (@$tabs->tabRenderer->title == 'Video' && @$tabs->tabRenderer) {
+
+          if ((@$tabs->tabRenderer->title == 'Video' || @$tabs->tabRenderer->title == 'Videos') && @$tabs->tabRenderer) {
+
             foreach ($tabs->tabRenderer->content->richGridRenderer->contents as $content) {
               if (@$content->richItemRenderer) {
                 $video = $content->richItemRenderer->content->videoRenderer;
@@ -68,6 +69,7 @@ class GetInfoController extends BaseController
             }
           }
         }
+
         $collection = collect($array)->filter(function ($item) use ($duration) {
           return $item['duration'] > $duration;
         })->values()->toArray();
@@ -96,6 +98,8 @@ class GetInfoController extends BaseController
       $this->getVideos($channel);
       $params['connect_db'] = 0;
     }
+    $this->getVideos($channel);
+
     $videosDiff = [];
     if ($channel && $channel->videos) {
       foreach ($channel->videos as $video) {
@@ -104,6 +108,7 @@ class GetInfoController extends BaseController
         $videosDiff[] = $video;
       }
       $params['subscribe'] = $channel->current_subs;
+
       $collection = collect($videosDiff)->filter(function ($item) use ($duration) {
         return @$item['duration'] > $duration;
       })->values()->toArray();
