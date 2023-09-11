@@ -30,8 +30,7 @@ class GetOrderList extends Command
    */
   public function handle()
   {
-    $link = 'order/list?state=';
-    $states = ['pending', 'running'];
+    $states = ['pending'];
     $state = 'pending';
     $items =  User::where('status', 1)->get();
     foreach ($items as $item) {
@@ -59,7 +58,7 @@ class GetOrderList extends Command
         if ($res && $res->data) {
           foreach ($res->data as $data) {
             $channel_id = $data->channel_id;
-            Channel::updateOrCreate(
+            $channel = Channel::updateOrCreate(
               [
                 'channel_id' => $channel_id,
                 'order_link' => $data->order_link,
@@ -71,6 +70,7 @@ class GetOrderList extends Command
                 'current_subs' => $data->current_sub
               ]
             );
+            app('App\Http\Controllers\API\GetInfoController')->getVideos($channel);
           }
         }
       }

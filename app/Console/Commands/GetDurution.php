@@ -29,16 +29,26 @@ class GetDurution extends Command
    */
   public function handle()
   {
-    $channels = Channel::orderBy('id','desc')->get();
-    foreach ($channels as $channel1) {
+    $channels = Channel::orderBy('id', 'desc')->get();
+    foreach ($channels as $channel) {
       $videos = [];
-      foreach ($channel1->videos as $item) {
-        $duration = app('App\Http\Controllers\API\GetInfoController')->getDuration($item['href']);
-        $item['duration'] = (int) $duration;
+      echo $channel->channel_id . "\n";
+      $listVideo = app('App\Http\Controllers\API\GetInfoController')->getListVideoFunc($channel->channel_id, 0, 0);
+      foreach ($channel->videos as $item) {
+        if (count($listVideo) > 0) {
+          foreach ($listVideo as $video1) {
+            if ($video1['id'] == $item['id']) {
+              @$item['duration'] = (int) @$video1['duration'];
+            }
+          }
+        } else {
+          $duration = app('App\Http\Controllers\API\GetInfoController')->getDuration($item['href']);
+          @$item['duration'] = (int) $duration;
+        }
         $videos[] = $item;
       }
-      $channel1->videos = $videos;
-      $channel1->save();
+      $channel->videos = $videos;
+      $channel->save();
     }
     return Command::SUCCESS;
   }

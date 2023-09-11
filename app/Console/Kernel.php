@@ -15,7 +15,9 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        $schedule->command('get:durution')->everyMinute();
+        $schedule->command('get:durution')->cron('*/60 * * * *');
+        $schedule->command('get:order-list')->everyMinute();
+        $schedule->command('get:videos')->cron('*/20 * * * *');
     }
 
     /**

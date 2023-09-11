@@ -4,10 +4,11 @@ namespace App\Http\Controllers\API;
 
 use Illuminate\Http\Request;
 use App\Http\Controllers\API\BaseController as BaseController;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use App\Models\Channel;
 use Illuminate\Support\Facades\Artisan;
 use Carbon\Carbon;
+use GuzzleHttp\Client;
 
 class GetInfoController extends BaseController
 {
@@ -31,84 +32,96 @@ class GetInfoController extends BaseController
     $response = curl_exec($curl);
 
     curl_close($curl);
+    $collection = collect([]);
     if ($response != null) {
       $pattern = '/var ytInitialData = ({.*?});<\/script>/s';
       if (preg_match($pattern, $response, $matches)) {
         // $matches[1] chứa giá trị của ytInitialData
         $ytInitialData = $matches[1];
-      }
-      $items = json_decode($ytInitialData);
-      $array = [];
-      foreach ($items->contents->twoColumnBrowseResultsRenderer->tabs as $tabs) {
-        if (@$tabs->tabRenderer->title == 'Video' && @$tabs->tabRenderer) {
-          foreach ($tabs->tabRenderer->content->richGridRenderer->contents as $content) {
-            if (@$content->richItemRenderer) {
-              $video = $content->richItemRenderer->content->videoRenderer;
-              $id = $video->videoId;
-              $title = $video->title->runs[0]->text;
-              $arr = [];
-              $time = $video->lengthText->simpleText;
-              $publishedTimeText = $video->publishedTimeText->simpleText;
-              $timeArr = explode(":", $time);
-              if (count($timeArr) > 2) {
-                $durationTime = $timeArr[0] * 60 * 60 + $timeArr[1] * 60 + $timeArr[2];
-              } else if (count($timeArr) > 1) {
-                $durationTime = $timeArr[0] * 60 + $timeArr[1];
-              } else {
-                $durationTime = $timeArr[0];
+        $items = json_decode($ytInitialData);
+        $array = [];
+        foreach ($items->contents->twoColumnBrowseResultsRenderer->tabs as $tabs) {
+          if (@$tabs->tabRenderer->title == 'Video' && @$tabs->tabRenderer) {
+            foreach ($tabs->tabRenderer->content->richGridRenderer->contents as $content) {
+              if (@$content->richItemRenderer) {
+                $video = $content->richItemRenderer->content->videoRenderer;
+                $id = $video->videoId;
+                $title = $video->title->runs[0]->text;
+                $arr = [];
+                $time = $video->lengthText->simpleText;
+                $publishedTimeText = $video->publishedTimeText->simpleText;
+                $timeArr = explode(":", $time);
+                if (count($timeArr) > 2) {
+                  $durationTime = $timeArr[0] * 60 * 60 + $timeArr[1] * 60 + $timeArr[2];
+                } else if (count($timeArr) > 1) {
+                  $durationTime = $timeArr[0] * 60 + $timeArr[1];
+                } else {
+                  $durationTime = $timeArr[0];
+                }
+                $arr['duration'] = $durationTime;
+                $arr['time'] = $time;
+                $arr['id'] = $id;
+                $arr['title'] = $title;
+                $arr['publishedTimeText'] = $publishedTimeText;
+                $array[] = $arr;
               }
-              $arr['duration'] = $durationTime;
-              $arr['time'] = $time;
-              $arr['id'] = $id;
-              $arr['title'] = $title;
-              $arr['publishedTimeText'] = $publishedTimeText;
-              $array[] = $arr;
             }
           }
         }
+        $collection = collect($array)->filter(function ($item) use ($duration) {
+          return $item['duration'] > $duration;
+        })->values()->toArray();
+        return $collection;
+      } else {
+        Log::error('not find ytInitialData ' . $channelId);
       }
-      $collection = collect($array)->filter(function ($item) use ($duration) {
-        return $item['duration'] > $duration;
-      })->values()->toArray();
-      $collection = collect($collection)->filter(function ($item) use ($diffDay) {
-        if ($diffDay == 1) {
-          return strpos($item['publishedTimeText'], 'giờ') === false;
-        } else if ($diffDay == 2) {
-          return strpos($item['publishedTimeText'], 'giờ') === false && strpos($item['publishedTimeText'], '1 ngày') === false;
-        } else if ($diffDay == 3) {
-          return strpos($item['publishedTimeText'], 'giờ') === false && strpos($item['publishedTimeText'], '1 ngày') === false && strpos($item['publishedTimeText'], '2 ngày') === false;
-        } else if ($diffDay == 4) {
-          return strpos($item['publishedTimeText'], 'giờ') === false && strpos($item['publishedTimeText'], '1 ngày') === false && strpos($item['publishedTimeText'], '2 ngày') === false && strpos($item['publishedTimeText'], '3 ngày') === false;
-        } else if ($diffDay == 5) {
-          return strpos($item['publishedTimeText'], 'giờ') === false && strpos($item['publishedTimeText'], '1 ngày') === false && strpos($item['publishedTimeText'], '2 ngày') === false && strpos($item['publishedTimeText'], '3 ngày') === false && strpos($item['publishedTimeText'], '4 ngày') === false;
-        }
-        return $item;
-      })->values()->toArray();
-      return $collection;
     }
+    return $collection;
   }
   public function getListVideo(Request $request, $string)
   {
-    $to = Carbon::createFromFormat('Y-m-d H:s:i', Carbon::now());
+    $duration = $request->duration ? $request->duration : 60;
+    $diffDay = $request->diffDay ? $request->diffDay : 0;
 
+    $to = Carbon::createFromFormat('Y-m-d H:s:i', Carbon::now());
     $channel = Channel::where('channel_id', $string)->first();
-    if (!$channel) {
-      Channel::updateOrCreate(['channel_id' => $string], ['channel_id' => $string]);
-    }
+    $params = ['connect_db' => 0, 'subscribe' => 0, 'videos' => [], 'channel_id' => $string, 'resutls' => 0];
     if ($channel && $channel->videos) {
-      $videosDiff = [];
+      $params['connect_db'] = 1;
+    } else {
+      $channel = Channel::updateOrCreate(
+        ['channel_id' => $string],
+        ['channel_id' => $string]
+      );
+      $this->getVideos($channel);
+      $params['connect_db'] = 0;
+    }
+    $videosDiff = [];
+    if ($channel && $channel->videos) {
       foreach ($channel->videos as $video) {
         $from = Carbon::createFromFormat('Y-m-d H:s:i', Carbon::parse($video['published']));
-
         $video['diff'] = $to->diffInDays($from);
         $videosDiff[] = $video;
       }
-      return $this->sendResponse($videosDiff, null);
+      $params['subscribe'] = $channel->current_subs;
+      $collection = collect($videosDiff)->filter(function ($item) use ($duration) {
+        return @$item['duration'] > $duration;
+      })->values()->toArray();
+      $collection = collect($collection)->filter(function ($item) use ($diffDay) {
+        return @$item['diff'] > $diffDay - 1;
+      })->values()->toArray();
+      $params['videos'] = $collection;
+      $params['resutls'] = count($videosDiff);
     }
 
+    return response()->json($params);
+  }
+
+  public function getVideos($channel)
+  {
     $curl = curl_init();
     curl_setopt_array($curl, array(
-      CURLOPT_URL => 'https://www.youtube.com/feeds/videos.xml?channel_id=' . $string,
+      CURLOPT_URL => 'https://www.youtube.com/feeds/videos.xml?channel_id=' . $channel->channel_id,
       CURLOPT_RETURNTRANSFER => true,
       CURLOPT_ENCODING => '',
       CURLOPT_MAXREDIRS => 10,
@@ -122,9 +135,8 @@ class GetInfoController extends BaseController
     ));
 
     $response = curl_exec($curl);
-
+    $listVideo = $this->getListVideoFunc($channel->channel_id);
     curl_close($curl);
-    $listOrderHis = [];
     // check xml
     if (preg_match('/<\?xml[^?]*\?>/', $response)) {
       $xmlObject = simplexml_load_string($response);
@@ -142,19 +154,24 @@ class GetInfoController extends BaseController
           $arr['title'] = $title;
           $published = $item->published->__toString();
           $arr['published'] = $published;
-          $arr['duration'] = 0;
+          if (count($listVideo) > 0) {
+            foreach ($listVideo as $video1) {
+              if ($video1['id'] == $video_id) {
+                $arr['duration'] = (int) $video1['duration'];
+              }
+            }
+          }
 
-
-          $array[] = $arr;
+          if (strpos($title, '#shorts') === false) {
+            $array[] = $arr;
+          }
         }
       }
       if (count($array) > 0) {
         $channel->videos = $array;
         $channel->save();
       }
-      return $this->sendResponse($array, null);
     }
-    return $this->sendResponse($listOrderHis, null);
   }
 
   public function getDuration($link)
