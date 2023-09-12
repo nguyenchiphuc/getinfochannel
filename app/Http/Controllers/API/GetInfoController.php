@@ -127,6 +127,7 @@ class GetInfoController extends BaseController
 
     $videosDiff = [];
     if ($channel && ($channel->videos || $channel->channel_videos)) {
+      $channelVideos = [];
       if(strpos(json_encode($channel->channel_videos), 'duration') !== false) {
         $channelVideos = $channel->channel_videos;
       }else if(strpos(json_encode($channel->videos), 'duration') !== false){
