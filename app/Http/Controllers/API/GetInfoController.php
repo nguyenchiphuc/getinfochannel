@@ -45,12 +45,13 @@ class GetInfoController extends BaseController
               if ((strpos(@$tabs->tabRenderer->title, 'Video') !== false) && !empty($tabs->tabRenderer)) {
                 foreach ($tabs->tabRenderer->content->richGridRenderer->contents as $content) {
                   if (@$content->richItemRenderer) {
+                    $publishedTimeText = null;
                     $video = $content->richItemRenderer->content->videoRenderer;
                     $id = $video->videoId;
                     $title = $video->title->runs[0]->text;
                     $arr = [];
                     $time = $video->lengthText->simpleText;
-                    $publishedTimeText = $video->publishedTimeText->simpleText;
+                    $publishedTimeText = @$video->publishedTimeText->simpleText;
                     $timeKeywords = [
                       'năm' => 'subYears',
                       'tháng' => 'subMonths',
@@ -127,7 +128,6 @@ class GetInfoController extends BaseController
     $videosDiff = [];
     if ($channel && ($channel->videos || $channel->channel_videos)) {
       $channelVideos = strpos(json_encode($channel->videos), 'duration') !== false ? $channel->videos : $channel->channel_videos;
-
       foreach ($channelVideos as $video) {
         $from = Carbon::createFromFormat('Y-m-d H:s:i', Carbon::parse($video['publishedAt']));
         $video['diff'] = $to->diffInDays($from);
