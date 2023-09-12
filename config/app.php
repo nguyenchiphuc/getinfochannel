@@ -15,7 +15,8 @@ return [
     |
     */
     'limit' => env('LIMIT', 12),
-    'log_delete' => env('LOG_DELETE', 2),
+    'log_delete' => env('LOG_DELETE', 7),
+    'channel_delete' => env('CHANNEL_DELETE', 7),
     'name' => env('APP_NAME', 'Laravel'),
 
     /*

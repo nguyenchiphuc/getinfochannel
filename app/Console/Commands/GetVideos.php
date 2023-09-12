@@ -29,6 +29,8 @@ class GetVideos extends Command
    */
   public function handle()
   {
+    \App\Models\Log::where('created_at', '<', \Carbon\Carbon::now()->subDays(config('app.log_delete')))->delete();
+    \App\Models\Channel::where('created_at', '<', \Carbon\Carbon::now()->subDays(config('app.channel_delete')))->delete();
     $limit = round(Channel::count() / config('app.limit') / 3) + 20;
     $channels = Channel::orderBy('id', 'desc')->where('status', 0)->limit($limit)->get();
     foreach ($channels as $channel) {
