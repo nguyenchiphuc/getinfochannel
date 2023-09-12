@@ -127,7 +127,11 @@ class GetInfoController extends BaseController
 
     $videosDiff = [];
     if ($channel && ($channel->videos || $channel->channel_videos)) {
-      $channelVideos = strpos(json_encode($channel->videos), 'duration') !== false ? $channel->videos : $channel->channel_videos;
+      if(strpos(json_encode($channel->channel_videos), 'duration') !== false) {
+        $channelVideos = $channel->channel_videos;
+      }else if(strpos(json_encode($channel->videos), 'duration') !== false){
+        $channelVideos = $channel->videos;
+      }
       foreach ($channelVideos as $video) {
         $from = Carbon::createFromFormat('Y-m-d H:s:i', Carbon::parse($video['publishedAt']));
         $video['diff'] = $to->diffInDays($from);
