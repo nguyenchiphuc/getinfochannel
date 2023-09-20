@@ -13,11 +13,13 @@ use GuzzleHttp\Client;
 class GetInfoController extends BaseController
 {
   public function demo(Request $request, $string){
-    $channelId = "UCnFKBH95JDRnYYY_8Ogm0bQ";
+    $channelId = "UClpUgmNUJXyCvjn_YCDF96Q";
+    $listVideo = $this->getListVideoFunc($channelId, 60,0,'streams');
+    dd($listVideo);
     $curl = curl_init();
 
     curl_setopt_array($curl, array(
-      CURLOPT_URL => 'https://www.youtube.com/channel/' . $string . '/videos',
+      CURLOPT_URL => 'https://www.youtube.com/channel/' . $string . '/streams',
       CURLOPT_RETURNTRANSFER => true,
       CURLOPT_ENCODING => '',
       CURLOPT_MAXREDIRS => 10,
@@ -40,52 +42,80 @@ class GetInfoController extends BaseController
         // $matches[1] chứa giá trị của ytInitialData
         $ytInitialData = $matches[1];
         $items = json_decode($ytInitialData);
-        if(!empty($items->contents)){
-          foreach ($items->contents->twoColumnBrowseResultsRenderer->tabs as $tabs) {
-            if ((strpos(@$tabs->tabRenderer->title, 'Video') !== false) && !empty($tabs->tabRenderer)) {
-              foreach ($tabs->tabRenderer->content->richGridRenderer->contents as $content) {
-                if (@$content->richItemRenderer) {
-                  $video = $content->richItemRenderer->content->videoRenderer;
-                   $publishedTimeText = @$video->publishedTimeText->simpleText;
-                  $timeKeywords = [
-                    'năm' => 'subYears',
-                    'tháng' => 'subMonths',
-                    'ngày' => 'subDays',
-                    'giờ' => 'subHours',
-                    'phút' => 'subMinutes',
-                    'years' => 'subYears',
-                    'months' => 'subMonths',
-                    'days' => 'subDays',
-                    'hours' => 'subHours',
-                    'minutes' => 'subMinutes',
-                  ];
-                  $newDateTime = Carbon::now();
-                  // Tìm từ khóa thời gian trong chuỗi $publishedTimeText
-                  foreach ($timeKeywords as $keyword => $method) {
-                    if (strpos($publishedTimeText, $keyword) !== false) {
-                      $arrTime = explode(" $keyword ", $publishedTimeText);
-                      if (count($arrTime)) {
-                        $timeCurrent = (int) $arrTime[0];
-                        $newDateTime = Carbon::now()->$method($timeCurrent);
-                        break; // Thoát khỏi vòng lặp khi đã tìm thấy từ khóa thời gian
+        $array = [];
+        try{
+          if(!empty($items->contents)){
+            foreach ($items->contents->twoColumnBrowseResultsRenderer->tabs as $tabs) {
+              if ((strpos(@$tabs->tabRenderer->title, 'Sự kiện phát trực tiếp') !== false) && !empty($tabs->tabRenderer)) {
+
+                foreach ($tabs->tabRenderer->content->richGridRenderer->contents as $content) {
+                  if (@$content->richItemRenderer) {
+                    $publishedTimeText = null;
+                    $video = $content->richItemRenderer->content->videoRenderer;
+                    $id = $video->videoId;
+                    $title = $video->title->runs[0]->text;
+                    $arr = [];
+                    $time = $video->lengthText->simpleText;
+                    $publishedTimeText = @$video->publishedTimeText->simpleText;
+                    $timeKeywords = [
+                      'năm' => 'subYears',
+                      'tháng' => 'subMonths',
+                      'tuần' => 'subWeeks',
+                      'ngày' => 'subDays',
+                      'giờ' => 'subHours',
+                      'phút' => 'subMinutes',
+                      'years' => 'subYears',
+                      'months' => 'subMonths',
+                      'days' => 'subDays',
+                      'hours' => 'subHours',
+                      'minutes' => 'subMinutes',
+                    ];
+                    $newDateTime = Carbon::now();
+                    // Tìm từ khóa thời gian trong chuỗi $publishedTimeText
+                    foreach ($timeKeywords as $keyword => $method) {
+                      if (strpos($publishedTimeText, $keyword) !== false) {
+                        $arrTime = explode(" $keyword ", $publishedTimeText);
+                        if (count($arrTime)) {
+                          $timeCurrent = (int) str_replace('Phát trực tiếp ', '', $arrTime[0]) + 1;
+                          $newDateTime = Carbon::now()->$method($timeCurrent);
+                          break; // Thoát khỏi vòng lặp khi đã tìm thấy từ khóa thời gian
+                        }
                       }
                     }
+  
+                    $timeArr = explode(":", $time);
+                    if (count($timeArr) > 2) {
+                      $durationTime = $timeArr[0] * 60 * 60 + $timeArr[1] * 60 + $timeArr[2];
+                    } else if (count($timeArr) > 1) {
+                      $durationTime = $timeArr[0] * 60 + $timeArr[1];
+                    } else {
+                      $durationTime = $timeArr[0];
+                    }
+                    $arr['duration'] = $durationTime;
+                    $arr['time'] = $time;
+                    $arr['id'] = $id;
+                    $arr['title'] = $title;
+                    $arr['publishedTimeText'] = $publishedTimeText;
+                    $arr['publishedAt'] = $newDateTime->format('Y-m-d H:i:s');
+                    $array[] = $arr;
                   }
-                  dd($newDateTime) ;
                 }
               }
             }
           }
+        }catch (\Exception $e) {
+          Log::error($channelId.' $items->contents->twoColumnBrowseResultsRenderer->tabs '.$e->getMessage());   
         }
+        dd($array);
       }
     }
   }
 
-  public function getListVideoFunc($channelId, $duration = 60, $diffDay = 0)
+  public function getListVideoFunc($channelId, $duration = 60, $diffDay = 0, $typeChannel = 'videos')
   {
     $curl = curl_init();
     curl_setopt_array($curl, array(
-      CURLOPT_URL => 'https://www.youtube.com/channel/' . $channelId . '/videos',
+      CURLOPT_URL => 'https://www.youtube.com/channel/' . $channelId . '/'.$typeChannel,
       CURLOPT_RETURNTRANSFER => true,
       CURLOPT_ENCODING => '',
       CURLOPT_MAXREDIRS => 10,
@@ -109,10 +139,11 @@ class GetInfoController extends BaseController
         $ytInitialData = $matches[1];
         $items = json_decode($ytInitialData);
         $array = [];
+        $titleGet = $typeChannel == 'videos' ? 'Video' : 'Sự kiện phát trực tiếp';
         try{
           if(!empty($items->contents)){
             foreach ($items->contents->twoColumnBrowseResultsRenderer->tabs as $tabs) {
-              if ((strpos(@$tabs->tabRenderer->title, 'Video') !== false) && !empty($tabs->tabRenderer)) {
+              if ((strpos(@$tabs->tabRenderer->title, $titleGet) !== false) && !empty($tabs->tabRenderer)) {
                 foreach ($tabs->tabRenderer->content->richGridRenderer->contents as $content) {
                   if (@$content->richItemRenderer) {
                     $publishedTimeText = null;
@@ -125,11 +156,13 @@ class GetInfoController extends BaseController
                     $timeKeywords = [
                       'năm' => 'subYears',
                       'tháng' => 'subMonths',
+                      'tuần' => 'subWeeks',
                       'ngày' => 'subDays',
                       'giờ' => 'subHours',
                       'phút' => 'subMinutes',
                       'years' => 'subYears',
                       'months' => 'subMonths',
+                      'weeks' => 'subWeeks',
                       'days' => 'subDays',
                       'hours' => 'subHours',
                       'minutes' => 'subMinutes',
@@ -140,7 +173,7 @@ class GetInfoController extends BaseController
                       if (strpos($publishedTimeText, $keyword) !== false) {
                         $arrTime = explode(" $keyword ", $publishedTimeText);
                         if (count($arrTime)) {
-                          $timeCurrent = (int) $arrTime[0] + 1;
+                          $timeCurrent = (int) str_replace('Phát trực tiếp ', '', $arrTime[0]) + 1;
                           $newDateTime = Carbon::now()->$method($timeCurrent);
                           break; // Thoát khỏi vòng lặp khi đã tìm thấy từ khóa thời gian
                         }
@@ -180,6 +213,7 @@ class GetInfoController extends BaseController
     }
     return $collection;
   }
+
   public function getListVideo(Request $request, $string)
   {
     $duration = $request->duration ? $request->duration : 60;
@@ -203,7 +237,7 @@ class GetInfoController extends BaseController
     $videosDiff = [];
     if ($channel && ($channel->videos || $channel->channel_videos)) {
       $channelVideos = [];
-      if(strpos(json_encode($channel->channel_videos), 'duration') !== false) {
+      if($channel->channel_videos > 0 && strpos(json_encode($channel->channel_videos), 'duration') !== false) {
         $channelVideos = $channel->channel_videos;
       }else if(strpos(json_encode($channel->videos), 'duration') !== false){
         $channelVideos = $channel->videos;
@@ -249,6 +283,9 @@ class GetInfoController extends BaseController
 
     $response = curl_exec($curl);
     $listVideo = $this->getListVideoFunc($channel->channel_id);
+    if(count($listVideo) == 0) {
+      $listVideo = $this->getListVideoFunc($channel->channel_id, 60, 0, 'streams');
+    }
     curl_close($curl);
     // check xml
     if (preg_match('/<\?xml[^?]*\?>/', $response)) {
@@ -274,6 +311,8 @@ class GetInfoController extends BaseController
                   $arr['duration'] = (int) $video1['duration'];
                 }
               }
+            }else{
+              $arr['duration'] = 120;
             }
 
             $array[] = $arr;
