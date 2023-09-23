@@ -12,103 +12,39 @@ use GuzzleHttp\Client;
 
 class GetInfoController extends BaseController
 {
-  public function demo(Request $request, $string){
-    $channelId = "UClpUgmNUJXyCvjn_YCDF96Q";
-    $listVideo = $this->getListVideoFunc($channelId, 60,0,'streams');
-    dd($listVideo);
+  public function getAPILink($channelId) {
     $curl = curl_init();
 
     curl_setopt_array($curl, array(
-      CURLOPT_URL => 'https://www.youtube.com/channel/' . $string . '/streams',
+      CURLOPT_URL => config('app.api_link').$channelId,
       CURLOPT_RETURNTRANSFER => true,
       CURLOPT_ENCODING => '',
       CURLOPT_MAXREDIRS => 10,
       CURLOPT_TIMEOUT => 0,
       CURLOPT_FOLLOWLOCATION => true,
-      CURLOPT_PROXY => config('app.proxy'),
       CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
       CURLOPT_CUSTOMREQUEST => 'GET',
-      CURLOPT_HTTPHEADER => array(
-        'Cookie: GPS=1; VISITOR_INFO1_LIVE=8Q0vdu_YCKE; VISITOR_PRIVACY_METADATA=CgJWThICGgA%3D; YSC=k74t4OreAKY'
-      ),
     ));
 
     $response = curl_exec($curl);
 
     curl_close($curl);
-    if ($response != null) {
-      $pattern = '/var ytInitialData = ({.*?});<\/script>/s';
-      if (preg_match($pattern, $response, $matches)) {
-        // $matches[1] chứa giá trị của ytInitialData
-        $ytInitialData = $matches[1];
-        $items = json_decode($ytInitialData);
-        $array = [];
-        try{
-          if(!empty($items->contents)){
-            foreach ($items->contents->twoColumnBrowseResultsRenderer->tabs as $tabs) {
-              if ((strpos(@$tabs->tabRenderer->title, 'Sự kiện phát trực tiếp') !== false) && !empty($tabs->tabRenderer)) {
-
-                foreach ($tabs->tabRenderer->content->richGridRenderer->contents as $content) {
-                  if (@$content->richItemRenderer) {
-                    $publishedTimeText = null;
-                    $video = $content->richItemRenderer->content->videoRenderer;
-                    $id = $video->videoId;
-                    $title = $video->title->runs[0]->text;
-                    $arr = [];
-                    $time = $video->lengthText->simpleText;
-                    $publishedTimeText = @$video->publishedTimeText->simpleText;
-                    $timeKeywords = [
-                      'năm' => 'subYears',
-                      'tháng' => 'subMonths',
-                      'tuần' => 'subWeeks',
-                      'ngày' => 'subDays',
-                      'giờ' => 'subHours',
-                      'phút' => 'subMinutes',
-                      'years' => 'subYears',
-                      'months' => 'subMonths',
-                      'days' => 'subDays',
-                      'hours' => 'subHours',
-                      'minutes' => 'subMinutes',
-                    ];
-                    $newDateTime = Carbon::now();
-                    // Tìm từ khóa thời gian trong chuỗi $publishedTimeText
-                    foreach ($timeKeywords as $keyword => $method) {
-                      if (strpos($publishedTimeText, $keyword) !== false) {
-                        $arrTime = explode(" $keyword ", $publishedTimeText);
-                        if (count($arrTime)) {
-                          $timeCurrent = (int) str_replace('Phát trực tiếp ', '', $arrTime[0]) + 1;
-                          $newDateTime = Carbon::now()->$method($timeCurrent);
-                          break; // Thoát khỏi vòng lặp khi đã tìm thấy từ khóa thời gian
-                        }
-                      }
-                    }
-  
-                    $timeArr = explode(":", $time);
-                    if (count($timeArr) > 2) {
-                      $durationTime = $timeArr[0] * 60 * 60 + $timeArr[1] * 60 + $timeArr[2];
-                    } else if (count($timeArr) > 1) {
-                      $durationTime = $timeArr[0] * 60 + $timeArr[1];
-                    } else {
-                      $durationTime = $timeArr[0];
-                    }
-                    $arr['duration'] = $durationTime;
-                    $arr['time'] = $time;
-                    $arr['id'] = $id;
-                    $arr['title'] = $title;
-                    $arr['publishedTimeText'] = $publishedTimeText;
-                    $arr['publishedAt'] = $newDateTime->format('Y-m-d H:i:s');
-                    $array[] = $arr;
-                  }
-                }
-              }
-            }
-          }
-        }catch (\Exception $e) {
-          Log::error($channelId.' $items->contents->twoColumnBrowseResultsRenderer->tabs '.$e->getMessage());   
-        }
-        dd($array);
+    $result = json_decode($response);
+    if($result->resutls > 0) {
+      $arr = [];
+      foreach ($result->videos as $key => $value) {
+        $arrNew = [];
+        $arrNew['duration'] = $value->duration;
+        $arrNew['id'] = $value->id;
+        $arrNew['title'] = $value->title;
+        $arrNew['publishedAt'] = $value->publishedAt;
+        $arrNew['from'] = $value->from;
+        $arrNew['callApi'] = true;
+        $arr[] = $arrNew;
       }
+      return (array) $arr;
     }
+    return [];
   }
 
   public function getListVideoFunc($channelId, $duration = 60, $diffDay = 0, $typeChannel = 'videos')
@@ -151,8 +87,16 @@ class GetInfoController extends BaseController
                     $id = $video->videoId;
                     $title = $video->title->runs[0]->text;
                     $arr = [];
-                    $time = $video->lengthText->simpleText;
-                    $publishedTimeText = @$video->publishedTimeText->simpleText;
+                    $time = !empty($video->lengthText) ? $video->lengthText->simpleText : '';
+                    if(!$time) {
+                      Log::error('not find time ' . $channelId);
+                      continue;
+                    } 
+                    $publishedTimeText = !empty($video->publishedTimeText) ? @$video->publishedTimeText->simpleText : '';
+                    if(!$publishedTimeText) {
+                      Log::error('not find publishedTimeText ' . $channelId);
+                      continue;
+                    } 
                     $timeKeywords = [
                       'năm' => 'subYears',
                       'tháng' => 'subMonths',
@@ -242,7 +186,6 @@ class GetInfoController extends BaseController
       }else if(strpos(json_encode($channel->videos), 'duration') !== false){
         $channelVideos = $channel->videos;
       }
-
       foreach ($channelVideos as $video) {
         $from = Carbon::createFromFormat('Y-m-d H:s:i', Carbon::parse($video['publishedAt']));
         $video['diff'] = $to->diffInDays($from);
@@ -280,12 +223,15 @@ class GetInfoController extends BaseController
         'Cookie: VISITOR_INFO1_LIVE=8Q0vdu_YCKE; VISITOR_PRIVACY_METADATA=CgJWThICGgA%3D'
       ),
     ));
-
+    $callApi = false;
     $response = curl_exec($curl);
     $listVideo = $this->getListVideoFunc($channel->channel_id);
     if(count($listVideo) == 0) {
       $listVideo = $this->getListVideoFunc($channel->channel_id, 60, 0, 'streams');
     }
+    if(count($listVideo) == 0){
+      $listVideo = $this->getAPILink($channel->channel_id);
+    } 
     curl_close($curl);
     // check xml
     if (preg_match('/<\?xml[^?]*\?>/', $response)) {
@@ -311,8 +257,6 @@ class GetInfoController extends BaseController
                   $arr['duration'] = (int) $video1['duration'];
                 }
               }
-            }else{
-              $arr['duration'] = 120;
             }
 
             $array[] = $arr;

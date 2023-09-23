@@ -19,6 +19,7 @@ return [
     'channel_delete' => env('CHANNEL_DELETE', 7),
     'name' => env('APP_NAME', 'Laravel'),
     'proxy' => env('PROXY'),
+    'api_link' => env('API_LINK', 'http://ytb.dataparse.one/api/getListVideo/'),
 
     /*
     |--------------------------------------------------------------------------

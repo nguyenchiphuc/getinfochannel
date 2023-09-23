@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\API\GetInfoController;
+use App\Http\Controllers\API\TestController;
 
 /*
 |--------------------------------------------------------------------------
@@ -20,3 +21,4 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 });
 Route::pattern('string', '([A-Za-z0-9_-]+)');
 Route::get('/getListVideo/{string}',  [GetInfoController::class, 'getListVideo']);
+Route::get('/test/{string}',  [TestController::class, 'getListVideo']);
