@@ -14,7 +14,7 @@ class TestController extends BaseController
 {
   public function demo(Request $request, $string){
     $channelId = "UClpUgmNUJXyCvjn_YCDF96Q";
-    $listVideo = $this->getListVideoFunc($channelId, 60,0,'streams');
+    $listVideo = $this->getListVideoFunc($channelId, 60,0,'videos');
     dd($listVideo);
     $curl = curl_init();
 
@@ -146,6 +146,117 @@ class TestController extends BaseController
     return [];
   }
 
+  public function getListVideoFuncFeatured($channelId, $duration = 60, $diffDay = 0)
+  {
+    $curl = curl_init();
+    curl_setopt_array($curl, array(
+      CURLOPT_URL => 'https://www.youtube.com/channel/' . $channelId . '/featured',
+      CURLOPT_RETURNTRANSFER => true,
+      CURLOPT_ENCODING => '',
+      CURLOPT_MAXREDIRS => 10,
+      CURLOPT_TIMEOUT => 0,
+      CURLOPT_FOLLOWLOCATION => true,
+      CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+      CURLOPT_PROXY => config('app.proxy'),
+      CURLOPT_CUSTOMREQUEST => 'GET',
+      CURLOPT_HTTPHEADER => array(
+        'Cookie: GPS=1; VISITOR_INFO1_LIVE=8Q0vdu_YCKE; VISITOR_PRIVACY_METADATA=CgJWThICGgA%3D; YSC=ZaE57vZNiI8'
+      ),
+    ));
+
+    $response = curl_exec($curl);
+    curl_close($curl);
+    $collection = collect([]);
+    if ($response != null) {
+      $pattern = '/var ytInitialData = ({.*?});<\/script>/s';
+      if (preg_match($pattern, $response, $matches)) {
+        // $matches[1] chứa giá trị của ytInitialData
+        $ytInitialData = $matches[1];
+        $items = json_decode($ytInitialData);
+        $array = [];
+        if (!empty($items->contents)) {
+          foreach ($items->contents->twoColumnBrowseResultsRenderer->tabs as $tabs) {
+          //   echo "<pre>";
+          //     print_r($items);
+          // echo "</pre>";
+            if (@$tabs->tabRenderer->title == 'Trang chủ') {
+              foreach ($tabs->tabRenderer->content->sectionListRenderer->contents as $content) {
+                foreach ($content->itemSectionRenderer->contents as $key => $value) {
+                  if(empty($value->shelfRenderer)){
+                    continue;
+                  }
+                  foreach ($value->shelfRenderer->content->horizontalListRenderer->items as $item1) {
+                    $video = ($item1->gridVideoRenderer);
+                    $publishedTimeText = null;
+                    $id = $video->videoId;
+                    $title = $video->title->simpleText;
+                    $arr = [];
+                    $time = !empty($video->thumbnailOverlays[0]->thumbnailOverlayTimeStatusRenderer->text->simpleText) ? $video->thumbnailOverlays[0]->thumbnailOverlayTimeStatusRenderer->text->simpleText : '';
+                    if (!$time) {
+                      Log::error('not find time ' . $channelId);
+                      continue;
+                    }
+
+                    $publishedTimeText = !empty($video->publishedTimeText) ? @$video->publishedTimeText->simpleText : '';
+                    if (!$publishedTimeText) {
+                      Log::error('not find publishedTimeText ' . $channelId);
+                      continue;
+                    }
+                    $timeKeywords = [
+                      'năm' => 'subYears',
+                      'tháng' => 'subMonths',
+                      'tuần' => 'subWeeks',
+                      'ngày' => 'subDays',
+                      'giờ' => 'subHours',
+                      'phút' => 'subMinutes',
+                      'years' => 'subYears',
+                      'months' => 'subMonths',
+                      'weeks' => 'subWeeks',
+                      'days' => 'subDays',
+                      'hours' => 'subHours',
+                      'minutes' => 'subMinutes',
+                    ];
+                    $newDateTime = Carbon::now();
+                    // Tìm từ khóa thời gian trong chuỗi $publishedTimeText
+                    foreach ($timeKeywords as $keyword => $method) {
+                      if (strpos($publishedTimeText, $keyword) !== false) {
+                        $arrTime = explode(" $keyword ", $publishedTimeText);
+                        if (count($arrTime)) {
+                          $timeCurrent = (int) str_replace('Phát trực tiếp ', '', $arrTime[0]) + 1;
+                          $newDateTime = Carbon::now()->$method($timeCurrent);
+                          break; // Thoát khỏi vòng lặp khi đã tìm thấy từ khóa thời gian
+                        }
+                      }
+                    }
+                    $timeArr = explode(":", $time);
+                    if (count($timeArr) > 2) {
+                      $durationTime = $timeArr[0] * 60 * 60 + $timeArr[1] * 60 + $timeArr[2];
+                    } else if (count($timeArr) > 1) {
+                      $durationTime = $timeArr[0] * 60 + $timeArr[1];
+                    } else {
+                      $durationTime = $timeArr[0];
+                    }
+                    $arr['duration'] = $durationTime;
+                    $arr['time'] = $time;
+                    $arr['id'] = $id;
+                    $arr['title'] = $title;
+                    $arr['publishedTimeText'] = $publishedTimeText;
+                    $arr['publishedAt'] = $newDateTime->format('Y-m-d H:i:s');
+                    $array[] = $arr;
+                  }
+                }
+              }
+            }
+          }
+          $collection = collect($array)->filter(function ($item) use ($duration) {
+            return $item['duration'] > $duration;
+          })->values()->toArray();
+          return $collection;
+        }
+      }
+    }
+    return $collection;
+  }
   public function getListVideoFunc($channelId, $duration = 60, $diffDay = 0, $typeChannel = 'videos')
   {
     $curl = curl_init();
@@ -329,9 +440,11 @@ class TestController extends BaseController
     ));
     $callApi = false;
     $response = curl_exec($curl);
-    $listVideo = $this->getListVideoFunc($channel->channel_id, 60, 0, 'streams');
+    // $listVideo = $this->getListVideoFunc($channel->channel_id, 60, 0, 'featured');
+    $listVideo = $this->getListVideoFuncFeatured( $channel->channel_id, 60, 0);
     dd($listVideo);
     $listVideo = $this->getListVideoFunc($channel->channel_id);
+    dd($listVideo);
     if(count($listVideo) == 0) {
       $listVideo = $this->getListVideoFunc($channel->channel_id, 60, 0, 'streams');
     }
