@@ -387,6 +387,10 @@ class GetInfoController extends BaseController
         $channel->channel_videos = $listVideo;
         $channel->save();
       }
+    }else {
+      $channel->videos = [];
+      $channel->channel_videos = $listVideo;
+      $channel->save();
     }
   }
 

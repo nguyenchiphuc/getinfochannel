@@ -12,105 +12,6 @@ use GuzzleHttp\Client;
 
 class TestController extends BaseController
 {
-  public function demo(Request $request, $string){
-    $channelId = "UClpUgmNUJXyCvjn_YCDF96Q";
-    $listVideo = $this->getListVideoFunc($channelId, 60,0,'videos');
-    dd($listVideo);
-    $curl = curl_init();
-
-    curl_setopt_array($curl, array(
-      CURLOPT_URL => 'https://www.youtube.com/channel/' . $string . '/streams',
-      CURLOPT_RETURNTRANSFER => true,
-      CURLOPT_ENCODING => '',
-      CURLOPT_MAXREDIRS => 10,
-      CURLOPT_TIMEOUT => 0,
-      CURLOPT_FOLLOWLOCATION => true,
-      CURLOPT_PROXY => config('app.proxy'),
-      CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-      CURLOPT_CUSTOMREQUEST => 'GET',
-      CURLOPT_HTTPHEADER => array(
-        'Cookie: GPS=1; VISITOR_INFO1_LIVE=8Q0vdu_YCKE; VISITOR_PRIVACY_METADATA=CgJWThICGgA%3D; YSC=k74t4OreAKY'
-      ),
-    ));
-
-    $response = curl_exec($curl);
-
-    curl_close($curl);
-    if ($response != null) {
-      $pattern = '/var ytInitialData = ({.*?});<\/script>/s';
-      if (preg_match($pattern, $response, $matches)) {
-        // $matches[1] chứa giá trị của ytInitialData
-        $ytInitialData = $matches[1];
-        $items = json_decode($ytInitialData);
-        $array = [];
-        try{
-          if(!empty($items->contents)){
-            foreach ($items->contents->twoColumnBrowseResultsRenderer->tabs as $tabs) {
-              if ((strpos(@$tabs->tabRenderer->title, 'Sự kiện phát trực tiếp') !== false) && !empty($tabs->tabRenderer)) {
-
-                foreach ($tabs->tabRenderer->content->richGridRenderer->contents as $content) {
-                  if (@$content->richItemRenderer) {
-                    $publishedTimeText = null;
-                    $video = $content->richItemRenderer->content->videoRenderer;
-                    $id = $video->videoId;
-                    $title = $video->title->runs[0]->text;
-                    $arr = [];
-                    $time = $video->lengthText->simpleText;
-                    $publishedTimeText = @$video->publishedTimeText->simpleText;
-                    $timeKeywords = [
-                      'năm' => 'subYears',
-                      'tháng' => 'subMonths',
-                      'tuần' => 'subWeeks',
-                      'ngày' => 'subDays',
-                      'giờ' => 'subHours',
-                      'phút' => 'subMinutes',
-                      'years' => 'subYears',
-                      'months' => 'subMonths',
-                      'days' => 'subDays',
-                      'hours' => 'subHours',
-                      'minutes' => 'subMinutes',
-                    ];
-                    $newDateTime = Carbon::now();
-                    // Tìm từ khóa thời gian trong chuỗi $publishedTimeText
-                    foreach ($timeKeywords as $keyword => $method) {
-                      if (strpos($publishedTimeText, $keyword) !== false) {
-                        $arrTime = explode(" $keyword ", $publishedTimeText);
-                        if (count($arrTime)) {
-                          $timeCurrent = (int) str_replace('Phát trực tiếp ', '', $arrTime[0]) + 1;
-                          $newDateTime = Carbon::now()->$method($timeCurrent);
-                          break; // Thoát khỏi vòng lặp khi đã tìm thấy từ khóa thời gian
-                        }
-                      }
-                    }
-  
-                    $timeArr = explode(":", $time);
-                    if (count($timeArr) > 2) {
-                      $durationTime = $timeArr[0] * 60 * 60 + $timeArr[1] * 60 + $timeArr[2];
-                    } else if (count($timeArr) > 1) {
-                      $durationTime = $timeArr[0] * 60 + $timeArr[1];
-                    } else {
-                      $durationTime = $timeArr[0];
-                    }
-                    $arr['duration'] = $durationTime;
-                    $arr['time'] = $time;
-                    $arr['id'] = $id;
-                    $arr['title'] = $title;
-                    $arr['publishedTimeText'] = $publishedTimeText;
-                    $arr['publishedAt'] = $newDateTime->format('Y-m-d H:i:s');
-                    $array[] = $arr;
-                  }
-                }
-              }
-            }
-          }
-        }catch (\Exception $e) {
-          Log::error($channelId.' $items->contents->twoColumnBrowseResultsRenderer->tabs '.$e->getMessage());   
-        }
-        dd($array);
-      }
-    }
-  }
-
   public function getAPILink($channelId) {
     $curl = curl_init();
 
@@ -179,6 +80,7 @@ class TestController extends BaseController
           //   echo "<pre>";
           //     print_r($items);
           // echo "</pre>";
+
             if (@$tabs->tabRenderer->title == 'Trang chủ') {
               foreach ($tabs->tabRenderer->content->sectionListRenderer->contents as $content) {
                 foreach ($content->itemSectionRenderer->contents as $key => $value) {
@@ -239,6 +141,7 @@ class TestController extends BaseController
                     $arr['duration'] = $durationTime;
                     $arr['time'] = $time;
                     $arr['id'] = $id;
+                    $arr['featured'] = true;
                     $arr['title'] = $title;
                     $arr['publishedTimeText'] = $publishedTimeText;
                     $arr['publishedAt'] = $newDateTime->format('Y-m-d H:i:s');
@@ -257,6 +160,7 @@ class TestController extends BaseController
     }
     return $collection;
   }
+
   public function getListVideoFunc($channelId, $duration = 60, $diffDay = 0, $typeChannel = 'videos')
   {
     $curl = curl_init();
@@ -286,28 +190,22 @@ class TestController extends BaseController
         $items = json_decode($ytInitialData);
         $array = [];
         $titleGet = $typeChannel == 'videos' ? 'Video' : 'Sự kiện phát trực tiếp';
-        try{
+        // try{
           if(!empty($items->contents)){
             foreach ($items->contents->twoColumnBrowseResultsRenderer->tabs as $tabs) {
-
               if ((strpos(@$tabs->tabRenderer->title, $titleGet) !== false) && !empty($tabs->tabRenderer)) {
-
                 foreach ($tabs->tabRenderer->content->richGridRenderer->contents as $content) {
-
                   if (@$content->richItemRenderer) {
-
                     $publishedTimeText = null;
-                    $video = @$content->richItemRenderer->content->videoRenderer;
+                    $video = $content->richItemRenderer->content->videoRenderer;
                     $id = $video->videoId;
                     $title = $video->title->runs[0]->text;
                     $arr = [];
-
                     $time = !empty($video->lengthText) ? $video->lengthText->simpleText : '';
                     if(!$time) {
                       Log::error('not find time ' . $channelId);
                       continue;
                     } 
-
                     $publishedTimeText = !empty($video->publishedTimeText) ? @$video->publishedTimeText->simpleText : '';
                     if(!$publishedTimeText) {
                       Log::error('not find publishedTimeText ' . $channelId);
@@ -339,6 +237,7 @@ class TestController extends BaseController
                         }
                       }
                     }
+  
                     $timeArr = explode(":", $time);
                     if (count($timeArr) > 2) {
                       $durationTime = $timeArr[0] * 60 * 60 + $timeArr[1] * 60 + $timeArr[2];
@@ -359,9 +258,9 @@ class TestController extends BaseController
               }
             }
           }
-        }catch (\Exception $e) {
-          Log::error($channelId.' $items->contents->twoColumnBrowseResultsRenderer->tabs '.$e->getMessage());   
-        }
+        // }catch (\Exception $e) {
+        //   Log::error($channelId.' $items->contents->twoColumnBrowseResultsRenderer->tabs '.$e->getMessage());   
+        // }
         $collection = collect($array)->filter(function ($item) use ($duration) {
           return $item['duration'] > $duration;
         })->values()->toArray();
@@ -440,11 +339,10 @@ class TestController extends BaseController
     ));
     $callApi = false;
     $response = curl_exec($curl);
-    // $listVideo = $this->getListVideoFunc($channel->channel_id, 60, 0, 'featured');
-    $listVideo = $this->getListVideoFuncFeatured( $channel->channel_id, 60, 0);
-    dd($listVideo);
     $listVideo = $this->getListVideoFunc($channel->channel_id);
-    dd($listVideo);
+    if(count($listVideo) == 0) {
+      $listVideo = $this->getListVideoFuncFeatured($channel->channel_id, 60, 0);
+    }
     if(count($listVideo) == 0) {
       $listVideo = $this->getListVideoFunc($channel->channel_id, 60, 0, 'streams');
     }
@@ -489,6 +387,10 @@ class TestController extends BaseController
         $channel->channel_videos = $listVideo;
         $channel->save();
       }
+    }else{
+      $channel->videos = [];
+      $channel->channel_videos = $listVideo;
+      $channel->save();
     }
   }
 
