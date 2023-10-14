@@ -42,7 +42,7 @@ class Kernel extends HttpKernel
             \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
             'throttle:10000,1',
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
-            \App\Http\Middleware\ApiDataLogger::class,
+            // \App\Http\Middleware\ApiDataLogger::class,
         ],
     ];
 
