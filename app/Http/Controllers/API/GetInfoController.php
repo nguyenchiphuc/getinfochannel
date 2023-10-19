@@ -88,10 +88,10 @@ class GetInfoController extends BaseController
                     continue;
                   }
                   foreach ($value->shelfRenderer->content->horizontalListRenderer->items as $item1) {
-                    $video = ($item1->gridVideoRenderer);
+                    $video = @($item1->gridVideoRenderer);
                     $publishedTimeText = null;
-                    $id = $video->videoId;
-                    $title = $video->title->simpleText;
+                    $id = @$video->videoId;
+                    $title = @$video->title->simpleText;
                     $arr = [];
                     $time = !empty($video->thumbnailOverlays[0]->thumbnailOverlayTimeStatusRenderer->text->simpleText) ? $video->thumbnailOverlays[0]->thumbnailOverlayTimeStatusRenderer->text->simpleText : '';
                     if (!$time) {
