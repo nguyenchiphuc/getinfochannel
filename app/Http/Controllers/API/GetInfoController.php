@@ -87,6 +87,12 @@ class GetInfoController extends BaseController
                   if(empty($value->shelfRenderer)){
                     continue;
                   }
+                  if(empty($value->shelfRenderer->content)){
+                    continue;
+                  }
+                  if(empty($value->shelfRenderer->content->horizontalListRenderer)){
+                    continue;
+                  }
                   foreach ($value->shelfRenderer->content->horizontalListRenderer->items as $item1) {
                     $video = @($item1->gridVideoRenderer);
                     $publishedTimeText = null;
