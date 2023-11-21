@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\API\GetInfoController;
+use App\Http\Controllers\HomeController;
 
 /*
 |--------------------------------------------------------------------------
@@ -14,9 +15,10 @@ use App\Http\Controllers\API\GetInfoController;
 |
 */
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::get('/',  [HomeController::class, 'index']);
+Route::post('/proxy',  [HomeController::class, 'proxy'])->name('proxy');
+
+
 Route::pattern('string', '([A-Za-z0-9_-]+)');
 
 Route::get('/demodemo/{string?}',  [GetInfoController::class, 'demo']);

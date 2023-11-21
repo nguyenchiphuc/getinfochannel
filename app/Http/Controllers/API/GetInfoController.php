@@ -9,9 +9,15 @@ use App\Models\Channel;
 use Illuminate\Support\Facades\Artisan;
 use Carbon\Carbon;
 use GuzzleHttp\Client;
+use App\Models\Setting;
 
 class GetInfoController extends BaseController
 {
+  protected $proxy = '';
+  public function __construct() {
+    $setting = Setting::where('id', 1)->first();
+    $this->proxy = $setting->proxy;
+  }
   public function getAPILink($channelId) {
     $curl = curl_init();
 
@@ -58,7 +64,7 @@ class GetInfoController extends BaseController
       CURLOPT_TIMEOUT => 0,
       CURLOPT_FOLLOWLOCATION => true,
       CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-      CURLOPT_PROXY => config('app.proxy'),
+      CURLOPT_PROXY => $this->proxy,
       CURLOPT_CUSTOMREQUEST => 'GET',
       CURLOPT_HTTPHEADER => array(
         'Cookie: GPS=1; VISITOR_INFO1_LIVE=8Q0vdu_YCKE; VISITOR_PRIVACY_METADATA=CgJWThICGgA%3D; YSC=ZaE57vZNiI8'
@@ -178,7 +184,7 @@ class GetInfoController extends BaseController
       CURLOPT_TIMEOUT => 0,
       CURLOPT_FOLLOWLOCATION => true,
       CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-      CURLOPT_PROXY => config('app.proxy'),
+      CURLOPT_PROXY => $this->proxy,
       CURLOPT_CUSTOMREQUEST => 'GET',
       CURLOPT_HTTPHEADER => array(
         'Cookie: GPS=1; VISITOR_INFO1_LIVE=8Q0vdu_YCKE; VISITOR_PRIVACY_METADATA=CgJWThICGgA%3D; YSC=ZaE57vZNiI8'
@@ -336,7 +342,7 @@ class GetInfoController extends BaseController
       CURLOPT_MAXREDIRS => 10,
       CURLOPT_TIMEOUT => 0,
       CURLOPT_FOLLOWLOCATION => true,
-      CURLOPT_PROXY => config('app.proxy'),
+      CURLOPT_PROXY => $this->proxy,
       CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
       CURLOPT_CUSTOMREQUEST => 'GET',
       CURLOPT_HTTPHEADER => array(
