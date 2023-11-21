@@ -89,6 +89,9 @@ class GetInfoController extends BaseController
 
             if (@$tabs->tabRenderer->title == 'Trang chủ') {
               foreach ($tabs->tabRenderer->content->sectionListRenderer->contents as $content) {
+                if(empty($content->itemSectionRenderer)){
+                  continue;
+                }
                 foreach ($content->itemSectionRenderer->contents as $key => $value) {
                   if(empty($value->shelfRenderer)){
                     continue;
