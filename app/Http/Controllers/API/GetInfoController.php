@@ -90,16 +90,20 @@ class GetInfoController extends BaseController
             if (@$tabs->tabRenderer->title == 'Trang chủ') {
               foreach ($tabs->tabRenderer->content->sectionListRenderer->contents as $content) {
                 if(empty($content->itemSectionRenderer)){
+                  Log::error('not find itemSectionRenderer ' . $channelId);
                   continue;
                 }
                 foreach ($content->itemSectionRenderer->contents as $key => $value) {
                   if(empty($value->shelfRenderer)){
+                    Log::error('not find shelfRenderer ' . $channelId);
                     continue;
                   }
                   if(empty($value->shelfRenderer->content)){
+                    Log::error('not find shelfRenderer->content ' . $channelId);
                     continue;
                   }
                   if(empty($value->shelfRenderer->content->horizontalListRenderer)){
+                    Log::error('not find shelfRenderer->content->horizontalListRenderer ' . $channelId);
                     continue;
                   }
                   foreach ($value->shelfRenderer->content->horizontalListRenderer->items as $item1) {
@@ -209,6 +213,10 @@ class GetInfoController extends BaseController
           if(!empty($items->contents)){
             foreach ($items->contents->twoColumnBrowseResultsRenderer->tabs as $tabs) {
               if ((strpos(@$tabs->tabRenderer->title, $titleGet) !== false) && !empty($tabs->tabRenderer)) {
+                if(empty($tabs->tabRenderer->content->richGridRenderer)){
+                  Log::error('not find tabRenderer->content->richGridRenderer ' . $channelId);
+                  continue;
+                }
                 foreach ($tabs->tabRenderer->content->richGridRenderer->contents as $content) {
                   if (@$content->richItemRenderer) {
                     $publishedTimeText = null;
