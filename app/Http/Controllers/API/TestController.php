@@ -86,15 +86,19 @@ class TestController extends BaseController
           //   echo "<pre>";
           //     print_r($items);
           // echo "</pre>";
-
             if (@$tabs->tabRenderer->title == 'Trang chủ') {
               foreach ($tabs->tabRenderer->content->sectionListRenderer->contents as $content) {
+
                 foreach ($content->itemSectionRenderer->contents as $key => $value) {
                   if(empty($value->shelfRenderer)){
                     continue;
                   }
                   foreach ($value->shelfRenderer->content->horizontalListRenderer->items as $item1) {
+                    if(empty($item1->gridVideoRenderer)){
+                      continue;
+                    }
                     $video = ($item1->gridVideoRenderer);
+                    
                     $publishedTimeText = null;
                     $id = $video->videoId;
                     $title = $video->title->simpleText;
@@ -390,6 +394,10 @@ class TestController extends BaseController
       }
       if (count($array) > 0) {
         $channel->videos = $array;
+        $channel->channel_videos = $listVideo;
+        $channel->save();
+      }else{
+        $channel->videos = [];
         $channel->channel_videos = $listVideo;
         $channel->save();
       }
