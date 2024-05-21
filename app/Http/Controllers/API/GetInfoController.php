@@ -53,8 +53,9 @@ class GetInfoController extends BaseController
     return [];
   }
 
-  public function getListVideoFuncFeatured($channelId, $duration = 60, $diffDay = 0)
+  public function getListVideoFuncFeatured($channel, $duration = 60, $diffDay = 0)
   {
+    $channelId = $channel->channel_id;
     $curl = curl_init();
     curl_setopt_array($curl, array(
       CURLOPT_URL => 'https://www.youtube.com/channel/' . $channelId . '/featured',
@@ -180,8 +181,9 @@ class GetInfoController extends BaseController
     return $collection;
   }
 
-  public function getListVideoFunc($channelId, $duration = 60, $diffDay = 0, $typeChannel = 'videos')
+  public function getListVideoFunc($channel, $duration = 60, $diffDay = 0, $typeChannel = 'videos')
   {
+    $channelId = $channel->channel_id;
     $curl = curl_init();
     curl_setopt_array($curl, array(
       CURLOPT_URL => 'https://www.youtube.com/channel/' . $channelId . '/'.$typeChannel,
@@ -202,6 +204,11 @@ class GetInfoController extends BaseController
     curl_close($curl);
     $collection = collect([]);
     if ($response != null) {
+      
+      if (strpos($response, 'Tài khoản này đã bị chấm dứt do chúng tôi nhận được nhiều đơn khiếu nại của bên thứ ba về việc vi phạm bản quyền liên quan đến tư liệu mà người dùng này đăng tải.') !== false) {
+        $channel->order_link = 'channel_is_die';
+        $channel->save();
+      }
       $pattern = '/var ytInitialData = ({.*?});<\/script>/s';
       if (preg_match($pattern, $response, $matches)) {
         // $matches[1] chứa giá trị của ytInitialData
@@ -314,7 +321,7 @@ class GetInfoController extends BaseController
       $params['connect_db'] = 0;
     }
     $this->getVideos($channel);
-
+    $params['order_link'] = $channel->order_link;
     $videosDiff = [];
     if ($channel && ($channel->videos || $channel->channel_videos)) {
       $channelVideos = [];
@@ -362,12 +369,12 @@ class GetInfoController extends BaseController
     ));
     $callApi = false;
     $response = curl_exec($curl);
-    $listVideo = $this->getListVideoFunc($channel->channel_id);
+    $listVideo = $this->getListVideoFunc($channel);
     // if(count($listVideo) == 0) {
     //   $listVideo = $this->getListVideoFuncFeatured($channel->channel_id, 60, 0);
     // }
     if(count($listVideo) == 0) {
-      $listVideo = $this->getListVideoFunc($channel->channel_id, 60, 0, 'streams');
+      $listVideo = $this->getListVideoFunc($channel, 60, 0, 'streams');
     }
     if(count($listVideo) == 0){
       // $listVideo = $this->getAPILink($channel->channel_id);
