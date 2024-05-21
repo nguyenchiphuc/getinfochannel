@@ -363,14 +363,14 @@ class GetInfoController extends BaseController
     $callApi = false;
     $response = curl_exec($curl);
     $listVideo = $this->getListVideoFunc($channel->channel_id);
-    if(count($listVideo) == 0) {
-      $listVideo = $this->getListVideoFuncFeatured($channel->channel_id, 60, 0);
-    }
+    // if(count($listVideo) == 0) {
+    //   $listVideo = $this->getListVideoFuncFeatured($channel->channel_id, 60, 0);
+    // }
     if(count($listVideo) == 0) {
       $listVideo = $this->getListVideoFunc($channel->channel_id, 60, 0, 'streams');
     }
     if(count($listVideo) == 0){
-      $listVideo = $this->getAPILink($channel->channel_id);
+      // $listVideo = $this->getAPILink($channel->channel_id);
     } 
     curl_close($curl);
     // check xml
