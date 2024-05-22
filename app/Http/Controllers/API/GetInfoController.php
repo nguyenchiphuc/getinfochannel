@@ -15,9 +15,11 @@ use App\Libraries\Helpers;
 class GetInfoController extends BaseController
 {
   protected $proxy = '';
+  protected $setting;
   public function __construct() {
     $setting = Setting::where('id', 1)->first();
     $this->proxy = $setting->proxy;
+    $this->setting = $setting;
   }
   public function getAPILink($channelId) {
     $curl = curl_init();
@@ -186,20 +188,36 @@ class GetInfoController extends BaseController
   {
     $channelId = $channel->channel_id;
     $curl = curl_init();
-    curl_setopt_array($curl, array(
-      CURLOPT_URL => 'https://www.youtube.com/channel/' . $channelId . '/'.$typeChannel,
-      CURLOPT_RETURNTRANSFER => true,
-      CURLOPT_ENCODING => '',
-      CURLOPT_MAXREDIRS => 10,
-      CURLOPT_TIMEOUT => 0,
-      CURLOPT_FOLLOWLOCATION => true,
-      CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-      CURLOPT_PROXY => $this->proxy,
-      CURLOPT_CUSTOMREQUEST => 'GET',
-      CURLOPT_HTTPHEADER => array(
-        'Cookie: GPS=1; VISITOR_INFO1_LIVE=8Q0vdu_YCKE; VISITOR_PRIVACY_METADATA=CgJWThICGgA%3D; YSC=ZaE57vZNiI8'
-      ),
-    ));
+    if($this->setting->using_proxy) {
+      curl_setopt_array($curl, array(
+        CURLOPT_URL => 'https://www.youtube.com/channel/' . $channelId . '/'.$typeChannel,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_ENCODING => '',
+        CURLOPT_MAXREDIRS => 10,
+        CURLOPT_TIMEOUT => 0,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+        CURLOPT_PROXY => $this->proxy,
+        CURLOPT_CUSTOMREQUEST => 'GET',
+        CURLOPT_HTTPHEADER => array(
+          'Cookie: GPS=1; VISITOR_INFO1_LIVE=8Q0vdu_YCKE; VISITOR_PRIVACY_METADATA=CgJWThICGgA%3D; YSC=ZaE57vZNiI8'
+        ),
+      ));
+    }else{
+      curl_setopt_array($curl, array(
+        CURLOPT_URL => 'https://www.youtube.com/channel/' . $channelId . '/'.$typeChannel,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_ENCODING => '',
+        CURLOPT_MAXREDIRS => 10,
+        CURLOPT_TIMEOUT => 0,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+        CURLOPT_CUSTOMREQUEST => 'GET',
+        CURLOPT_HTTPHEADER => array(
+          'Cookie: GPS=1; VISITOR_INFO1_LIVE=8Q0vdu_YCKE; VISITOR_PRIVACY_METADATA=CgJWThICGgA%3D; YSC=ZaE57vZNiI8'
+        ),
+      ));
+    }
 
     $response = curl_exec($curl);
     curl_close($curl);
@@ -329,7 +347,7 @@ class GetInfoController extends BaseController
       $channelVideos = [];
       if(count($channel->channel_videos) > 0 && strpos(json_encode($channel->channel_videos), 'duration') !== false) {
         $channelVideos = $channel->channel_videos;
-      }else if(strpos(json_encode($channel->videos), 'duration') !== false){
+      }else if(count($channel->videos) > 0 && strpos(json_encode($channel->videos), 'duration') !== false){
         $channelVideos = $channel->videos;
       }
       foreach ($channelVideos as $video) {
@@ -362,7 +380,6 @@ class GetInfoController extends BaseController
       CURLOPT_MAXREDIRS => 10,
       CURLOPT_TIMEOUT => 0,
       CURLOPT_FOLLOWLOCATION => true,
-      CURLOPT_PROXY => $this->proxy,
       CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
       CURLOPT_CUSTOMREQUEST => 'GET',
       CURLOPT_HTTPHEADER => array(

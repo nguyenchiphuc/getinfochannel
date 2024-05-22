@@ -14,9 +14,11 @@ use App\Models\Setting;
 class TestController extends BaseController
 {
   protected $proxy = '';
+  protected $setting;
   public function __construct() {
     $setting = Setting::where('id', 1)->first();
     $this->proxy = $setting->proxy;
+    $this->setting = $setting;
   }
   public function getAPILink($channelId) {
     $curl = curl_init();
@@ -53,24 +55,42 @@ class TestController extends BaseController
     return [];
   }
 
-  public function getListVideoFuncFeatured($channelId, $duration = 60, $diffDay = 0)
+  public function getListVideoFuncFeatured($channel, $duration = 60, $diffDay = 0)
   {
+    $channelId = $channel->channel_id;
     $curl = curl_init();
-    curl_setopt_array($curl, array(
-      CURLOPT_URL => 'https://www.youtube.com/channel/' . $channelId . '/featured',
-      CURLOPT_RETURNTRANSFER => true,
-      CURLOPT_ENCODING => '',
-      CURLOPT_MAXREDIRS => 10,
-      CURLOPT_TIMEOUT => 0,
-      CURLOPT_FOLLOWLOCATION => true,
-      CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-      CURLOPT_PROXY => $this->proxy,
-      CURLOPT_CUSTOMREQUEST => 'GET',
-      CURLOPT_HTTPHEADER => array(
-        'Cookie: GPS=1; VISITOR_INFO1_LIVE=8Q0vdu_YCKE; VISITOR_PRIVACY_METADATA=CgJWThICGgA%3D; YSC=ZaE57vZNiI8'
-      ),
-    ));
-
+    if($this->setting->using_proxy) {
+      curl_setopt_array($curl, array(
+        CURLOPT_URL => 'https://www.youtube.com/channel/' . $channelId . '/featured',
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_ENCODING => '',
+        CURLOPT_MAXREDIRS => 10,
+        CURLOPT_TIMEOUT => 0,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+        CURLOPT_PROXY => $this->proxy,
+        CURLOPT_CUSTOMREQUEST => 'GET',
+        CURLOPT_HTTPHEADER => array(
+          'Cookie: GPS=1; VISITOR_INFO1_LIVE=8Q0vdu_YCKE; VISITOR_PRIVACY_METADATA=CgJWThICGgA%3D; YSC=ZaE57vZNiI8'
+        ),
+      ));
+  
+    }else{
+      curl_setopt_array($curl, array(
+        CURLOPT_URL => 'https://www.youtube.com/channel/' . $channelId . '/featured',
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_ENCODING => '',
+        CURLOPT_MAXREDIRS => 10,
+        CURLOPT_TIMEOUT => 0,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+        CURLOPT_CUSTOMREQUEST => 'GET',
+        CURLOPT_HTTPHEADER => array(
+          'Cookie: GPS=1; VISITOR_INFO1_LIVE=8Q0vdu_YCKE; VISITOR_PRIVACY_METADATA=CgJWThICGgA%3D; YSC=ZaE57vZNiI8'
+        ),
+      ));
+    }
+    
     $response = curl_exec($curl);
     curl_close($curl);
     $collection = collect([]);
@@ -86,22 +106,31 @@ class TestController extends BaseController
           //   echo "<pre>";
           //     print_r($items);
           // echo "</pre>";
+
             if (@$tabs->tabRenderer->title == 'Trang chủ') {
               foreach ($tabs->tabRenderer->content->sectionListRenderer->contents as $content) {
-
+                if(empty($content->itemSectionRenderer)){
+                  Log::error('not find itemSectionRenderer ' . $channelId);
+                  continue;
+                }
                 foreach ($content->itemSectionRenderer->contents as $key => $value) {
                   if(empty($value->shelfRenderer)){
+                    Log::error('not find shelfRenderer ' . $channelId);
+                    continue;
+                  }
+                  if(empty($value->shelfRenderer->content)){
+                    Log::error('not find shelfRenderer->content ' . $channelId);
+                    continue;
+                  }
+                  if(empty($value->shelfRenderer->content->horizontalListRenderer)){
+                    Log::error('not find shelfRenderer->content->horizontalListRenderer ' . $channelId);
                     continue;
                   }
                   foreach ($value->shelfRenderer->content->horizontalListRenderer->items as $item1) {
-                    if(empty($item1->gridVideoRenderer)){
-                      continue;
-                    }
-                    $video = ($item1->gridVideoRenderer);
-                    
+                    $video = @($item1->gridVideoRenderer);
                     $publishedTimeText = null;
-                    $id = $video->videoId;
-                    $title = $video->title->simpleText;
+                    $id = @$video->videoId;
+                    $title = @$video->title->simpleText;
                     $arr = [];
                     $time = !empty($video->thumbnailOverlays[0]->thumbnailOverlayTimeStatusRenderer->text->simpleText) ? $video->thumbnailOverlays[0]->thumbnailOverlayTimeStatusRenderer->text->simpleText : '';
                     if (!$time) {
@@ -171,28 +200,50 @@ class TestController extends BaseController
     return $collection;
   }
 
-  public function getListVideoFunc($channelId, $duration = 60, $diffDay = 0, $typeChannel = 'videos')
+  public function getListVideoFunc($channel, $duration = 60, $diffDay = 0, $typeChannel = 'videos')
   {
+    $channelId = $channel->channel_id;
     $curl = curl_init();
-    curl_setopt_array($curl, array(
-      CURLOPT_URL => 'https://www.youtube.com/channel/' . $channelId . '/'.$typeChannel,
-      CURLOPT_RETURNTRANSFER => true,
-      CURLOPT_ENCODING => '',
-      CURLOPT_MAXREDIRS => 10,
-      CURLOPT_TIMEOUT => 0,
-      CURLOPT_FOLLOWLOCATION => true,
-      CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-      CURLOPT_PROXY => $this->proxy,
-      CURLOPT_CUSTOMREQUEST => 'GET',
-      CURLOPT_HTTPHEADER => array(
-        'Cookie: GPS=1; VISITOR_INFO1_LIVE=8Q0vdu_YCKE; VISITOR_PRIVACY_METADATA=CgJWThICGgA%3D; YSC=ZaE57vZNiI8'
-      ),
-    ));
+    if($this->setting->using_proxy) {
+      curl_setopt_array($curl, array(
+        CURLOPT_URL => 'https://www.youtube.com/channel/' . $channelId . '/'.$typeChannel,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_ENCODING => '',
+        CURLOPT_MAXREDIRS => 10,
+        CURLOPT_TIMEOUT => 0,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+        CURLOPT_PROXY => $this->proxy,
+        CURLOPT_CUSTOMREQUEST => 'GET',
+        CURLOPT_HTTPHEADER => array(
+          'Cookie: GPS=1; VISITOR_INFO1_LIVE=8Q0vdu_YCKE; VISITOR_PRIVACY_METADATA=CgJWThICGgA%3D; YSC=ZaE57vZNiI8'
+        ),
+      ));
+    }else{
+      curl_setopt_array($curl, array(
+        CURLOPT_URL => 'https://www.youtube.com/channel/' . $channelId . '/'.$typeChannel,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_ENCODING => '',
+        CURLOPT_MAXREDIRS => 10,
+        CURLOPT_TIMEOUT => 0,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+        CURLOPT_CUSTOMREQUEST => 'GET',
+        CURLOPT_HTTPHEADER => array(
+          'Cookie: GPS=1; VISITOR_INFO1_LIVE=8Q0vdu_YCKE; VISITOR_PRIVACY_METADATA=CgJWThICGgA%3D; YSC=ZaE57vZNiI8'
+        ),
+      ));
+    }
 
     $response = curl_exec($curl);
     curl_close($curl);
     $collection = collect([]);
     if ($response != null) {
+      
+      if (strpos($response, 'Tài khoản này đã bị chấm dứt do chúng tôi nhận được nhiều đơn khiếu nại của bên thứ ba về việc vi phạm bản quyền liên quan đến tư liệu mà người dùng này đăng tải.') !== false) {
+        $channel->order_link = 'channel_is_die';
+        $channel->save();
+      }
       $pattern = '/var ytInitialData = ({.*?});<\/script>/s';
       if (preg_match($pattern, $response, $matches)) {
         // $matches[1] chứa giá trị của ytInitialData
@@ -200,10 +251,14 @@ class TestController extends BaseController
         $items = json_decode($ytInitialData);
         $array = [];
         $titleGet = $typeChannel == 'videos' ? 'Video' : 'Sự kiện phát trực tiếp';
-        // try{
+        try{
           if(!empty($items->contents)){
             foreach ($items->contents->twoColumnBrowseResultsRenderer->tabs as $tabs) {
               if ((strpos(@$tabs->tabRenderer->title, $titleGet) !== false) && !empty($tabs->tabRenderer)) {
+                if(empty($tabs->tabRenderer->content->richGridRenderer)){
+                  Log::error('not find tabRenderer->content->richGridRenderer ' . $channelId);
+                  continue;
+                }
                 foreach ($tabs->tabRenderer->content->richGridRenderer->contents as $content) {
                   if (@$content->richItemRenderer) {
                     $publishedTimeText = null;
@@ -268,14 +323,15 @@ class TestController extends BaseController
               }
             }
           }
-        // }catch (\Exception $e) {
-        //   Log::error($channelId.' $items->contents->twoColumnBrowseResultsRenderer->tabs '.$e->getMessage());   
-        // }
+        }catch (\Exception $e) {
+          Log::error($channelId.' $items->contents->twoColumnBrowseResultsRenderer->tabs '.$e->getMessage());   
+        }
         $collection = collect($array)->filter(function ($item) use ($duration) {
           return $item['duration'] > $duration;
         })->values()->toArray();
         return $collection;
       } else {
+        Helpers::sendTelegramError('not find ytInitialData ' . $channelId);
         Log::error('not find ytInitialData ' . $channelId);
       }
     }
@@ -301,13 +357,13 @@ class TestController extends BaseController
       $params['connect_db'] = 0;
     }
     $this->getVideos($channel);
-
+    $params['order_link'] = $channel->order_link;
     $videosDiff = [];
     if ($channel && ($channel->videos || $channel->channel_videos)) {
       $channelVideos = [];
-      if($channel->channel_videos > 0 && strpos(json_encode($channel->channel_videos), 'duration') !== false) {
+      if(count($channel->channel_videos) > 0 && strpos(json_encode($channel->channel_videos), 'duration') !== false) {
         $channelVideos = $channel->channel_videos;
-      }else if(strpos(json_encode($channel->videos), 'duration') !== false){
+      }else if(count($channel->videos) > 0 && strpos(json_encode($channel->videos), 'duration') !== false){
         $channelVideos = $channel->videos;
       }
       foreach ($channelVideos as $video) {
@@ -333,31 +389,47 @@ class TestController extends BaseController
   public function getVideos($channel)
   {
     $curl = curl_init();
-    curl_setopt_array($curl, array(
-      CURLOPT_URL => 'https://www.youtube.com/feeds/videos.xml?channel_id=' . $channel->channel_id,
-      CURLOPT_RETURNTRANSFER => true,
-      CURLOPT_ENCODING => '',
-      CURLOPT_MAXREDIRS => 10,
-      CURLOPT_TIMEOUT => 0,
-      CURLOPT_FOLLOWLOCATION => true,
-      CURLOPT_PROXY => $this->proxy,
-      CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-      CURLOPT_CUSTOMREQUEST => 'GET',
-      CURLOPT_HTTPHEADER => array(
-        'Cookie: VISITOR_INFO1_LIVE=8Q0vdu_YCKE; VISITOR_PRIVACY_METADATA=CgJWThICGgA%3D'
-      ),
-    ));
+    if($this->setting->using_proxy) {
+      curl_setopt_array($curl, array(
+        CURLOPT_URL => 'https://www.youtube.com/feeds/videos.xml?channel_id=' . $channel->channel_id,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_ENCODING => '',
+        CURLOPT_MAXREDIRS => 10,
+        CURLOPT_TIMEOUT => 0,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_PROXY => $this->proxy,
+        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+        CURLOPT_CUSTOMREQUEST => 'GET',
+        CURLOPT_HTTPHEADER => array(
+          'Cookie: VISITOR_INFO1_LIVE=8Q0vdu_YCKE; VISITOR_PRIVACY_METADATA=CgJWThICGgA%3D'
+        ),
+      ));
+    }else{
+      curl_setopt_array($curl, array(
+        CURLOPT_URL => 'https://www.youtube.com/feeds/videos.xml?channel_id=' . $channel->channel_id,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_ENCODING => '',
+        CURLOPT_MAXREDIRS => 10,
+        CURLOPT_TIMEOUT => 0,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+        CURLOPT_CUSTOMREQUEST => 'GET',
+        CURLOPT_HTTPHEADER => array(
+          'Cookie: VISITOR_INFO1_LIVE=8Q0vdu_YCKE; VISITOR_PRIVACY_METADATA=CgJWThICGgA%3D'
+        ),
+      ));
+    }
     $callApi = false;
     $response = curl_exec($curl);
-    $listVideo = $this->getListVideoFunc($channel->channel_id);
+    $listVideo = $this->getListVideoFunc($channel);
+    // if(count($listVideo) == 0) {
+    //   $listVideo = $this->getListVideoFuncFeatured($channel->channel_id, 60, 0);
+    // }
     if(count($listVideo) == 0) {
-      $listVideo = $this->getListVideoFuncFeatured($channel->channel_id, 60, 0);
-    }
-    if(count($listVideo) == 0) {
-      $listVideo = $this->getListVideoFunc($channel->channel_id, 60, 0, 'streams');
+      $listVideo = $this->getListVideoFunc($channel, 60, 0, 'streams');
     }
     if(count($listVideo) == 0){
-      $listVideo = $this->getAPILink($channel->channel_id);
+      // $listVideo = $this->getAPILink($channel->channel_id);
     } 
     curl_close($curl);
     // check xml
@@ -401,7 +473,7 @@ class TestController extends BaseController
         $channel->channel_videos = $listVideo;
         $channel->save();
       }
-    }else{
+    }else {
       $channel->videos = [];
       $channel->channel_videos = $listVideo;
       $channel->save();

@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\Request;
 use Goutte\Client;
 class Helpers
 {
-  public static function sendTelegramError($message, $chatId = 1002121265286, $token = '6159396277:AAGEQ3KjI227tvYKu6K53xQpqC7IxPS0HIQ') {
+  public static function sendTelegramError($message, $chatId = 1002026162577, $token = '6159396277:AAGEQ3KjI227tvYKu6K53xQpqC7IxPS0HIQ') {
     $data = [
         'text' => $message,
         'chat_id' => '-'.$chatId
