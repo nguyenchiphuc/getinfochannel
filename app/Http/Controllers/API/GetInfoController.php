@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Artisan;
 use Carbon\Carbon;
 use GuzzleHttp\Client;
 use App\Models\Setting;
+use App\Libraries\Helpers;
 
 class GetInfoController extends BaseController
 {
@@ -296,6 +297,7 @@ class GetInfoController extends BaseController
         })->values()->toArray();
         return $collection;
       } else {
+        Helpers::sendTelegramError('not find ytInitialData ' . $channelId);
         Log::error('not find ytInitialData ' . $channelId);
       }
     }
@@ -325,7 +327,7 @@ class GetInfoController extends BaseController
     $videosDiff = [];
     if ($channel && ($channel->videos || $channel->channel_videos)) {
       $channelVideos = [];
-      if($channel->channel_videos > 0 && strpos(json_encode($channel->channel_videos), 'duration') !== false) {
+      if(count($channel->channel_videos) > 0 && strpos(json_encode($channel->channel_videos), 'duration') !== false) {
         $channelVideos = $channel->channel_videos;
       }else if(strpos(json_encode($channel->videos), 'duration') !== false){
         $channelVideos = $channel->videos;
