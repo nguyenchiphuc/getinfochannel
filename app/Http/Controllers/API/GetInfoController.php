@@ -228,6 +228,24 @@ class GetInfoController extends BaseController
         $channel->order_link = 'channel_is_die';
         $channel->save();
       }
+      preg_match('/\}\,\{\"text\"\:\{\"content\"\:\"([^\"]+)?/', $response, $output_array);
+      if(count($output_array) == 2) {
+        $count = $output_array[1];
+        if(strpos($count, 'N video') !== false) {
+          $count = str_replace('N video', '', $count);
+          $count = trim($count);
+          $count = str_replace("\u{A0}", "", $count);
+          if(strpos($count, ',') !== false) {
+            $count = str_replace(",", "", $count);
+            $count = $count.'00';
+          }
+        }
+        if(strpos($count, ' video') !== false) {
+          $count = str_replace(' video', '', $count);
+        }
+        $channel->count_video =  (int) $count;
+        $channel->save();
+      }
       $pattern = '/var ytInitialData = ({.*?});<\/script>/s';
       if (preg_match($pattern, $response, $matches)) {
         // $matches[1] chứa giá trị của ytInitialData
@@ -329,7 +347,7 @@ class GetInfoController extends BaseController
 
     $to = Carbon::createFromFormat('Y-m-d H:s:i', Carbon::now());
     $channel = Channel::where('channel_id', $string)->first();
-    $params = ['connect_db' => 0, 'subscribe' => 0, 'videos' => [], 'channel_id' => $string, 'resutls' => 0];
+    $params = ['connect_db' => 0, 'count_video' => $channel->count_video, 'subscribe' => 0, 'videos' => [], 'channel_id' => $string, 'resutls' => 0];
     if ($channel && ($channel->videos || $channel->channel_videos)) {
       $params['connect_db'] = 1;
     } else {
@@ -342,6 +360,7 @@ class GetInfoController extends BaseController
     }
     $this->getVideos($channel);
     $params['order_link'] = $channel->order_link;
+    $params['count_video'] = $channel->count_video;
     $videosDiff = [];
     if ($channel && ($channel->videos || $channel->channel_videos)) {
       $channelVideos = [];
