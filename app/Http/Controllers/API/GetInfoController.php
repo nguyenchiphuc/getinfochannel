@@ -18,7 +18,7 @@ class GetInfoController extends BaseController
   protected $setting;
   public function __construct() {
     $setting = Setting::where('id', 1)->first();
-    $this->proxy = $setting->proxy;
+    $this->proxy = $this->randomProxy($setting->proxy);
     $this->setting = $setting;
   }
   public function getAPILink($channelId) {
@@ -184,6 +184,12 @@ class GetInfoController extends BaseController
     return $collection;
   }
 
+  public function randomProxy($proxy) {
+    $proxyArr = explode('|', $proxy);
+    $index = array_rand($proxyArr,1);
+    return $proxyArr[$index];
+  }
+
   public function getListVideoFunc($channel, $duration = 60, $diffDay = 0, $typeChannel = 'videos')
   {
     $channelId = $channel->channel_id;
@@ -238,6 +244,8 @@ class GetInfoController extends BaseController
           if(strpos($count, ',') !== false) {
             $count = str_replace(",", "", $count);
             $count = $count.'00';
+          }else{
+            $count = $count.'000';
           }
         }
         if(strpos($count, ' video') !== false) {
@@ -347,7 +355,7 @@ class GetInfoController extends BaseController
 
     $to = Carbon::createFromFormat('Y-m-d H:s:i', Carbon::now());
     $channel = Channel::where('channel_id', $string)->first();
-    $params = ['connect_db' => 0, 'count_video' => $channel->count_video, 'subscribe' => 0, 'videos' => [], 'channel_id' => $string, 'resutls' => 0];
+    $params = ['connect_db' => 0, 'count_video' => @$channel->count_video, 'subscribe' => 0, 'videos' => [], 'channel_id' => $string, 'resutls' => 0];
     if ($channel && ($channel->videos || $channel->channel_videos)) {
       $params['connect_db'] = 1;
     } else {

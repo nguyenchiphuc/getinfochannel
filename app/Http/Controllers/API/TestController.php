@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Artisan;
 use Carbon\Carbon;
 use GuzzleHttp\Client;
 use App\Models\Setting;
+use App\Libraries\Helpers;
 
 class TestController extends BaseController
 {
@@ -17,7 +18,7 @@ class TestController extends BaseController
   protected $setting;
   public function __construct() {
     $setting = Setting::where('id', 1)->first();
-    $this->proxy = $setting->proxy;
+    $this->proxy = $this->randomProxy($setting->proxy);
     $this->setting = $setting;
   }
   public function getAPILink($channelId) {
@@ -198,6 +199,12 @@ class TestController extends BaseController
       }
     }
     return $collection;
+  }
+
+  public function randomProxy($proxy) {
+    $proxyArr = explode('|', $proxy);
+    $index = array_rand($proxyArr,1);
+    return $proxyArr[$index];
   }
 
   public function getListVideoFunc($channel, $duration = 60, $diffDay = 0, $typeChannel = 'videos')

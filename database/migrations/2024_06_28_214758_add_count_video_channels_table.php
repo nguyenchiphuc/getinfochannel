@@ -26,7 +26,9 @@ return new class extends Migration
     public function down()
     {
         Schema::table('channels', function (Blueprint $table) {
-            $table->dropColumn('count_video');
+            if(Schema::hasColumn('channels', 'count_video')){
+                $table->dropColumn('count_video');
+            }
         });
     }
 };
