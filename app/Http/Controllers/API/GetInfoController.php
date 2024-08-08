@@ -252,6 +252,7 @@ class GetInfoController extends BaseController
           $count = str_replace(' video', '', $count);
         }
         $channel->count_video =  (int) $count;
+        $channel->order_link = null;
         $channel->save();
       }
       $pattern = '/var ytInitialData = ({.*?});<\/script>/s';
@@ -370,12 +371,24 @@ class GetInfoController extends BaseController
     $params['order_link'] = $channel->order_link;
     $params['count_video'] = $channel->count_video;
     $videosDiff = [];
-    if ($channel && ($channel->videos || $channel->channel_videos)) {
+    if ($channel && ($channel->videos !=null || $channel->channel_videos !=null)) {
       $channelVideos = [];
-      if(count($channel->channel_videos) > 0 && strpos(json_encode($channel->channel_videos), 'duration') !== false) {
+      if($channel->channel_videos == '[]' || $channel->channel_videos == null) {
+        $channel->channel_videos = [];
+      }
+      if($channel->videos == '[]' || $channel->videos == null) {
+        $channel->videos = [];
+      }
+      if(count((array) $channel->channel_videos) > 0 && strpos(json_encode($channel->channel_videos), 'duration') !== false) {
         $channelVideos = $channel->channel_videos;
-      }else if(count($channel->videos) > 0 && strpos(json_encode($channel->videos), 'duration') !== false){
+      }else if(count((array) $channel->videos) > 0 && strpos(json_encode($channel->videos), 'duration') !== false){
         $channelVideos = $channel->videos;
+      }
+      if(!is_array($channelVideos)) {
+        $channelVideos = json_decode($channelVideos);
+      }
+      if($channel->order_link == 'channel_is_die') {
+        $channelVideos = [];
       }
       foreach ($channelVideos as $video) {
         $from = Carbon::createFromFormat('Y-m-d H:s:i', Carbon::parse($video['publishedAt']));
@@ -460,16 +473,22 @@ class GetInfoController extends BaseController
       }
       if (count($array) > 0) {
         $channel->videos = $array;
-        $channel->channel_videos = $listVideo;
+        if(count($listVideo) > 0) {
+          $channel->channel_videos = $listVideo;
+        }
         $channel->save();
       }else{
         $channel->videos = [];
-        $channel->channel_videos = $listVideo;
+        if(count($listVideo) > 0) {
+          $channel->channel_videos = $listVideo;
+        }
         $channel->save();
       }
     }else {
       $channel->videos = [];
-      $channel->channel_videos = $listVideo;
+      if(count($listVideo) > 0) {
+        $channel->channel_videos = $listVideo;
+      }
       $channel->save();
     }
   }
