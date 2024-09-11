@@ -21,45 +21,6 @@ class TestController extends BaseController
     $this->proxy = $this->randomProxy($setting->proxy);
     $this->setting = $setting;
   }
-
-  public function testUrl(Request $request) {
-    $url = $request->url;
-    $curl = curl_init();
-    curl_setopt_array($curl, array(
-    CURLOPT_URL => $url,
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_ENCODING => '',
-    CURLOPT_MAXREDIRS => 10,
-    CURLOPT_TIMEOUT => 10,
-    CURLOPT_FOLLOWLOCATION => true,
-    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-    CURLOPT_CUSTOMREQUEST => 'GET',
-    CURLOPT_HTTPHEADER => array(
-        'user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
-    ),
-    ));
-    $response = curl_exec($curl);
-    curl_close($curl);
-    preg_match('/room_id\=([^\"]+)?/', $response, $output_array);
-    if(count($output_array) < 2) {
-      preg_match('/roomId\"\:\"([^\"]+)?/', $response, $output_array);
-    }
-    preg_match('/uniqueId\"\:\"([^\"]+)?/', $response, $username1);
-    if(count($output_array) == 2) {
-      $room_id = @$output_array[1];
-     if(count($output_array) == 2 && @$output_array[1] > 0) {
-       if(count($username1) ==2) {
-         $uniqueId = $username1[1];
-         if (strpos($url, $uniqueId) !== false) {
-           $params = ['success' => 1, 'room_id' => @$output_array[1]];
-           return response()->json($params);
-         }
-       }
-     }
-    }
-    return ['success' => 0];
-
-  }
   public function getAPILink($channelId) {
     $curl = curl_init();
 
@@ -99,38 +60,21 @@ class TestController extends BaseController
   {
     $channelId = $channel->channel_id;
     $curl = curl_init();
-    if($this->setting->using_proxy) {
-      curl_setopt_array($curl, array(
-        CURLOPT_URL => 'https://www.youtube.com/channel/' . $channelId . '/featured',
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_ENCODING => '',
-        CURLOPT_MAXREDIRS => 10,
-        CURLOPT_TIMEOUT => 0,
-        CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-        CURLOPT_PROXY => $this->proxy,
-        CURLOPT_CUSTOMREQUEST => 'GET',
-        CURLOPT_HTTPHEADER => array(
-          'Cookie: GPS=1; VISITOR_INFO1_LIVE=8Q0vdu_YCKE; VISITOR_PRIVACY_METADATA=CgJWThICGgA%3D; YSC=ZaE57vZNiI8'
-        ),
-      ));
-  
-    }else{
-      curl_setopt_array($curl, array(
-        CURLOPT_URL => 'https://www.youtube.com/channel/' . $channelId . '/featured',
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_ENCODING => '',
-        CURLOPT_MAXREDIRS => 10,
-        CURLOPT_TIMEOUT => 0,
-        CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-        CURLOPT_CUSTOMREQUEST => 'GET',
-        CURLOPT_HTTPHEADER => array(
-          'Cookie: GPS=1; VISITOR_INFO1_LIVE=8Q0vdu_YCKE; VISITOR_PRIVACY_METADATA=CgJWThICGgA%3D; YSC=ZaE57vZNiI8'
-        ),
-      ));
-    }
-    
+    curl_setopt_array($curl, array(
+      CURLOPT_URL => 'https://www.youtube.com/channel/' . $channelId . '/featured',
+      CURLOPT_RETURNTRANSFER => true,
+      CURLOPT_ENCODING => '',
+      CURLOPT_MAXREDIRS => 10,
+      CURLOPT_TIMEOUT => 0,
+      CURLOPT_FOLLOWLOCATION => true,
+      CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+      CURLOPT_PROXY => $this->proxy,
+      CURLOPT_CUSTOMREQUEST => 'GET',
+      CURLOPT_HTTPHEADER => array(
+        'Cookie: GPS=1; VISITOR_INFO1_LIVE=8Q0vdu_YCKE; VISITOR_PRIVACY_METADATA=CgJWThICGgA%3D; YSC=ZaE57vZNiI8'
+      ),
+    ));
+
     $response = curl_exec($curl);
     curl_close($curl);
     $collection = collect([]);
@@ -286,13 +230,10 @@ class TestController extends BaseController
     $collection = collect([]);
     if ($response != null) {
       
-      if (strpos($response, 'Tài khoản này đã bị chấm dứt do chúng tôi nhận được nhiều đơn khiếu nại của bên thứ ba về việc vi phạm bản quyền liên quan đến tư liệu mà người dùng này đăng tải.') !== false) {
+      if (strpos($response, 'Tài khoản này đã bị chấm dứt do chúng tôi nhận được nhiều đơn khiếu nại của bên thứ ba về việc vi phạm bản quyền liên quan đến tư liệu mà người dùng này đăng tải.') !== false || strpos($response, 'Kênh này đã bị gỡ bỏ do vi phạm Nguyên tắc cộng đồng của chúng tôi.') !== false) {
         $channel->order_link = 'channel_is_die';
         $channel->save();
       }
-      $pattern = '/var ytInitialData = ({.*?});<\/script>/s';
-
-      
       preg_match('/\}\,\{\"text\"\:\{\"content\"\:\"([^\"]+)?/', $response, $output_array);
       if(count($output_array) == 2) {
         $count = $output_array[1];
@@ -303,14 +244,18 @@ class TestController extends BaseController
           if(strpos($count, ',') !== false) {
             $count = str_replace(",", "", $count);
             $count = $count.'00';
+          }else{
+            $count = $count.'000';
           }
         }
         if(strpos($count, ' video') !== false) {
           $count = str_replace(' video', '', $count);
         }
-        $channel->count_video = (int) $count;
+        $channel->count_video =  (int) $count;
+        $channel->order_link = null;
         $channel->save();
       }
+      $pattern = '/var ytInitialData = ({.*?});<\/script>/s';
       if (preg_match($pattern, $response, $matches)) {
         // $matches[1] chứa giá trị của ytInitialData
         $ytInitialData = $matches[1];
@@ -411,7 +356,7 @@ class TestController extends BaseController
 
     $to = Carbon::createFromFormat('Y-m-d H:s:i', Carbon::now());
     $channel = Channel::where('channel_id', $string)->first();
-    $params = ['connect_db' => 0, 'count_video' => $channel->count_video, 'subscribe' => 0, 'videos' => [], 'channel_id' => $string, 'resutls' => 0];
+    $params = ['connect_db' => 0, 'count_video' => @$channel->count_video, 'subscribe' => 0, 'videos' => [], 'channel_id' => $string, 'resutls' => 0];
     if ($channel && ($channel->videos || $channel->channel_videos)) {
       $params['connect_db'] = 1;
     } else {
@@ -426,14 +371,27 @@ class TestController extends BaseController
     $params['order_link'] = $channel->order_link;
     $params['count_video'] = $channel->count_video;
     $videosDiff = [];
-    if ($channel && ($channel->videos || $channel->channel_videos)) {
+    if ($channel && ($channel->videos !=null || $channel->channel_videos !=null)) {
       $channelVideos = [];
-      if(count($channel->channel_videos) > 0 && strpos(json_encode($channel->channel_videos), 'duration') !== false) {
+      if($channel->channel_videos == '[]' || $channel->channel_videos == null) {
+        $channel->channel_videos = [];
+      }
+      if($channel->videos == '[]' || $channel->videos == null) {
+        $channel->videos = [];
+      }
+      if(count((array) $channel->channel_videos) > 0 && strpos(json_encode($channel->channel_videos), 'duration') !== false) {
         $channelVideos = $channel->channel_videos;
-      }else if(count($channel->videos) > 0 && strpos(json_encode($channel->videos), 'duration') !== false){
+      }else if(count((array) $channel->videos) > 0 && strpos(json_encode($channel->videos), 'duration') !== false){
         $channelVideos = $channel->videos;
       }
+      if(!is_array($channelVideos)) {
+        $channelVideos = json_decode($channelVideos);
+      }
+      if($channel->order_link == 'channel_is_die') {
+        $channelVideos = [];
+      }
       foreach ($channelVideos as $video) {
+        $video = (array) $video;
         $from = Carbon::createFromFormat('Y-m-d H:s:i', Carbon::parse($video['publishedAt']));
         $video['diff'] = $to->diffInDays($from);
         $videosDiff[] = $video;
@@ -456,36 +414,19 @@ class TestController extends BaseController
   public function getVideos($channel)
   {
     $curl = curl_init();
-    if($this->setting->using_proxy) {
-      curl_setopt_array($curl, array(
-        CURLOPT_URL => 'https://www.youtube.com/feeds/videos.xml?channel_id=' . $channel->channel_id,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_ENCODING => '',
-        CURLOPT_MAXREDIRS => 10,
-        CURLOPT_TIMEOUT => 0,
-        CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_PROXY => $this->proxy,
-        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-        CURLOPT_CUSTOMREQUEST => 'GET',
-        CURLOPT_HTTPHEADER => array(
-          'Cookie: VISITOR_INFO1_LIVE=8Q0vdu_YCKE; VISITOR_PRIVACY_METADATA=CgJWThICGgA%3D'
-        ),
-      ));
-    }else{
-      curl_setopt_array($curl, array(
-        CURLOPT_URL => 'https://www.youtube.com/feeds/videos.xml?channel_id=' . $channel->channel_id,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_ENCODING => '',
-        CURLOPT_MAXREDIRS => 10,
-        CURLOPT_TIMEOUT => 0,
-        CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-        CURLOPT_CUSTOMREQUEST => 'GET',
-        CURLOPT_HTTPHEADER => array(
-          'Cookie: VISITOR_INFO1_LIVE=8Q0vdu_YCKE; VISITOR_PRIVACY_METADATA=CgJWThICGgA%3D'
-        ),
-      ));
-    }
+    curl_setopt_array($curl, array(
+      CURLOPT_URL => 'https://www.youtube.com/feeds/videos.xml?channel_id=' . $channel->channel_id,
+      CURLOPT_RETURNTRANSFER => true,
+      CURLOPT_ENCODING => '',
+      CURLOPT_MAXREDIRS => 10,
+      CURLOPT_TIMEOUT => 0,
+      CURLOPT_FOLLOWLOCATION => true,
+      CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+      CURLOPT_CUSTOMREQUEST => 'GET',
+      CURLOPT_HTTPHEADER => array(
+        'Cookie: VISITOR_INFO1_LIVE=8Q0vdu_YCKE; VISITOR_PRIVACY_METADATA=CgJWThICGgA%3D'
+      ),
+    ));
     $callApi = false;
     $response = curl_exec($curl);
     $listVideo = $this->getListVideoFunc($channel);

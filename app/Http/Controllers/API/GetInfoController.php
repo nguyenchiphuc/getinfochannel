@@ -391,6 +391,7 @@ class GetInfoController extends BaseController
         $channelVideos = [];
       }
       foreach ($channelVideos as $video) {
+        $video = (array) $video;
         $from = Carbon::createFromFormat('Y-m-d H:s:i', Carbon::parse($video['publishedAt']));
         $video['diff'] = $to->diffInDays($from);
         $videosDiff[] = $video;
