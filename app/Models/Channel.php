@@ -10,5 +10,6 @@ class Channel extends Model
    protected $guarded = [];
    protected $casts = [
       'videos' => 'array',
+      'logs' => 'array'
    ];
 }

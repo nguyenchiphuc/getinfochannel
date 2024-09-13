@@ -262,6 +262,11 @@ class GetInfoController extends BaseController
         $items = json_decode($ytInitialData);
         $array = [];
         $titleGet = $typeChannel == 'videos' ? 'Video' : 'Sự kiện phát trực tiếp';
+        if (strpos($response, '"title":"Video phát trực tiếp"') !== false) {
+          $titleGet = 'Video phát trực tiếp';
+          $logs = ['titleGet' => $titleGet];
+          $channel->logs = ($logs);
+        }
         try{
           if(!empty($items->contents)){
             foreach ($items->contents->twoColumnBrowseResultsRenderer->tabs as $tabs) {

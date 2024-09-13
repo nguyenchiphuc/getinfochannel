@@ -228,6 +228,7 @@ class TestController extends BaseController
     $response = curl_exec($curl);
     curl_close($curl);
     $collection = collect([]);
+    
     if ($response != null) {
       
       if (strpos($response, 'Tài khoản này đã bị chấm dứt do chúng tôi nhận được nhiều đơn khiếu nại của bên thứ ba về việc vi phạm bản quyền liên quan đến tư liệu mà người dùng này đăng tải.') !== false || strpos($response, 'Kênh này đã bị gỡ bỏ do vi phạm Nguyên tắc cộng đồng của chúng tôi.') !== false) {
@@ -262,6 +263,12 @@ class TestController extends BaseController
         $items = json_decode($ytInitialData);
         $array = [];
         $titleGet = $typeChannel == 'videos' ? 'Video' : 'Sự kiện phát trực tiếp';
+        if (strpos($response, '"title":"Video phát trực tiếp"') !== false) {
+          $titleGet = 'Video phát trực tiếp';
+          $logs = ['titleGet' => $titleGet];
+          $channel->logs = ($logs);
+        }
+
         try{
           if(!empty($items->contents)){
             foreach ($items->contents->twoColumnBrowseResultsRenderer->tabs as $tabs) {
