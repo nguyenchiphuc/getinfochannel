@@ -18,7 +18,7 @@ class GetInfoController extends BaseController
   protected $setting;
   public function __construct() {
     $setting = Setting::where('id', 1)->first();
-    $this->proxy = $this->randomProxy($setting->proxy);
+    $this->proxy = $this->randomProxy($setting->proxys);
     $this->setting = $setting;
   }
   public function getAPILink($channelId) {

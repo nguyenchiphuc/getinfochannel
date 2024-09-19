@@ -22,3 +22,4 @@ Route::post('/proxy',  [HomeController::class, 'proxy'])->name('proxy');
 Route::pattern('string', '([A-Za-z0-9_-]+)');
 
 Route::get('/demodemo/{string?}',  [GetInfoController::class, 'demo']);
+Route::get('/channel/{string?}',  [HomeController::class, 'channel'])->name('channel');
