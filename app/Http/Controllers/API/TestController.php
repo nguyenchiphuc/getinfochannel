@@ -21,6 +21,45 @@ class TestController extends BaseController
     $this->proxy = $this->randomProxy($setting->proxys);
     $this->setting = $setting;
   }
+
+  public function testUrl(Request $request) {
+    $url = $request->url;
+    $curl = curl_init();
+    curl_setopt_array($curl, array(
+    CURLOPT_URL => $url,
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_ENCODING => '',
+    CURLOPT_MAXREDIRS => 10,
+    CURLOPT_TIMEOUT => 10,
+    CURLOPT_FOLLOWLOCATION => true,
+    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+    CURLOPT_CUSTOMREQUEST => 'GET',
+    CURLOPT_HTTPHEADER => array(
+        'user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
+    ),
+    ));
+    $response = curl_exec($curl);
+    curl_close($curl);
+    preg_match('/room_id\=([^\"]+)?/', $response, $output_array);
+    if(count($output_array) < 2) {
+      preg_match('/roomId\"\:\"([^\"]+)?/', $response, $output_array);
+    }
+    preg_match('/uniqueId\"\:\"([^\"]+)?/', $response, $username1);
+    if(count($output_array) == 2) {
+      $room_id = @$output_array[1];
+     if(count($output_array) == 2 && @$output_array[1] > 0) {
+       if(count($username1) ==2) {
+         $uniqueId = $username1[1];
+         if (strpos($url, $uniqueId) !== false) {
+           $params = ['success' => 1, 'room_id' => @$output_array[1]];
+           return response()->json($params);
+         }
+       }
+     }
+    }
+    return ['success' => 0];
+
+  }
   public function getAPILink($channelId) {
     $curl = curl_init();
 
