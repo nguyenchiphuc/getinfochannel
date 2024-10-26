@@ -262,7 +262,7 @@ class GetInfoController extends BaseController
         $items = json_decode($ytInitialData);
         $array = [];
         $titleGet = $typeChannel == 'videos' ? 'Video' : 'Sự kiện phát trực tiếp';
-        if (strpos($response, '"title":"Video phát trực tiếp"') !== false) {
+        if (strpos($response, '"title":"Video phát trực tiếp"') !== false && $typeChannel != 'videos') {
           $titleGet = 'Video phát trực tiếp';
           $logs = ['titleGet' => $titleGet];
           $channel->logs = ($logs);

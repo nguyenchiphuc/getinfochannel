@@ -267,7 +267,6 @@ class TestController extends BaseController
     $response = curl_exec($curl);
     curl_close($curl);
     $collection = collect([]);
-    
     if ($response != null) {
       
       if (strpos($response, 'Tài khoản này đã bị chấm dứt do chúng tôi nhận được nhiều đơn khiếu nại của bên thứ ba về việc vi phạm bản quyền liên quan đến tư liệu mà người dùng này đăng tải.') !== false || strpos($response, 'Kênh này đã bị gỡ bỏ do vi phạm Nguyên tắc cộng đồng của chúng tôi.') !== false) {
@@ -302,7 +301,7 @@ class TestController extends BaseController
         $items = json_decode($ytInitialData);
         $array = [];
         $titleGet = $typeChannel == 'videos' ? 'Video' : 'Sự kiện phát trực tiếp';
-        if (strpos($response, '"title":"Video phát trực tiếp"') !== false) {
+        if (strpos($response, '"title":"Video phát trực tiếp"') !== false && $typeChannel != 'videos') {
           $titleGet = 'Video phát trực tiếp';
           $logs = ['titleGet' => $titleGet];
           $channel->logs = ($logs);
@@ -310,6 +309,7 @@ class TestController extends BaseController
 
         try{
           if(!empty($items->contents)){
+
             foreach ($items->contents->twoColumnBrowseResultsRenderer->tabs as $tabs) {
               if ((strpos(@$tabs->tabRenderer->title, $titleGet) !== false) && !empty($tabs->tabRenderer)) {
                 if(empty($tabs->tabRenderer->content->richGridRenderer)){
@@ -383,6 +383,7 @@ class TestController extends BaseController
         }catch (\Exception $e) {
           Log::error($channelId.' $items->contents->twoColumnBrowseResultsRenderer->tabs '.$e->getMessage());   
         }
+        dd($array);
         $collection = collect($array)->filter(function ($item) use ($duration) {
           return $item['duration'] > $duration;
         })->values()->toArray();
@@ -476,6 +477,7 @@ class TestController extends BaseController
     $callApi = false;
     $response = curl_exec($curl);
     $listVideo = $this->getListVideoFunc($channel);
+    dd($listVideo);
     // if(count($listVideo) == 0) {
     //   $listVideo = $this->getListVideoFuncFeatured($channel->channel_id, 60, 0);
     // }
