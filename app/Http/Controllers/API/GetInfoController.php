@@ -267,8 +267,45 @@ class GetInfoController extends BaseController
           $logs = ['titleGet' => $titleGet];
           $channel->logs = ($logs);
         }
+        if($typeChannel == 'videos') {
+          $titleGet = 'Video';
+        }
+        if($typeChannel == 'streams') {
+          $titleGet = 'Video phát trực tiếp';
+        }
+        if($typeChannel == 'shorts') {
+          $titleGet = 'Shorts';
+        }
+        $shortsArr = [];
         try{
           if(!empty($items->contents)){
+            foreach ($items->contents->twoColumnBrowseResultsRenderer->tabs as $tabs) {
+              if ((strpos(@$tabs->tabRenderer->title, $titleGet) !== false) && !empty($tabs->tabRenderer)) {
+
+                if(empty($tabs->tabRenderer->content->richGridRenderer)){
+                  Log::error('not find tabRenderer->content->richGridRenderer ' . $channelId);
+                  continue;
+                }
+                foreach ($tabs->tabRenderer->content->richGridRenderer->contents as $content) {
+
+                  if (@$content->richItemRenderer->content->shortsLockupViewModel) {
+                    $shortsLockupViewModel = @$content->richItemRenderer->content->shortsLockupViewModel;
+                    // echo json_encode($shortsLockupViewModel)."\n";
+                    // echo "<br>";
+                    $accessibilityText = $shortsLockupViewModel->accessibilityText;
+                    $entityId = $shortsLockupViewModel->entityId;
+                    $arrTitle = explode(',', $accessibilityText);
+                    $title = $arrTitle[0];
+                    $entityIdArr = explode('shorts-shelf-item-', $entityId);
+                    $idShort = 'short/'.$entityIdArr[1];
+                    $shortArr = [];
+                    $shortArr['id'] = $idShort;
+                    $shortArr['title'] = $title;
+                    $shortsArr[] = $shortArr;
+                  }
+                }
+              }
+            }
             foreach ($items->contents->twoColumnBrowseResultsRenderer->tabs as $tabs) {
               if ((strpos(@$tabs->tabRenderer->title, $titleGet) !== false) && !empty($tabs->tabRenderer)) {
                 if(empty($tabs->tabRenderer->content->richGridRenderer)){
@@ -342,6 +379,10 @@ class GetInfoController extends BaseController
         }catch (\Exception $e) {
           Log::error($channelId.' $items->contents->twoColumnBrowseResultsRenderer->tabs '.$e->getMessage());   
         }
+        if($typeChannel == 'shorts') {
+          $channel->short_videos = $shortsArr;
+          $channel->save();
+        }
         $collection = collect($array)->filter(function ($item) use ($duration) {
           return $item['duration'] > $duration;
         })->values()->toArray();
@@ -410,6 +451,7 @@ class GetInfoController extends BaseController
         return @$item['diff'] > $diffDay - 1;
       })->values()->toArray();
       $params['videos'] = $collection;
+      $params['short_videos'] = $channel->short_videos;
       $params['resutls'] = count($collection);
     }
 
@@ -434,6 +476,7 @@ class GetInfoController extends BaseController
     ));
     $callApi = false;
     $response = curl_exec($curl);
+    $this->getListVideoFunc($channel, 60, 0, 'shorts');
     $listVideo = $this->getListVideoFunc($channel);
     // if(count($listVideo) == 0) {
     //   $listVideo = $this->getListVideoFuncFeatured($channel->channel_id, 60, 0);
