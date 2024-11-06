@@ -452,7 +452,7 @@ class GetInfoController extends BaseController
       })->values()->toArray();
       $params['videos'] = $collection;
       $params['short_videos'] = $channel->short_videos;
-      $params['short_resutls'] = count($channel->short_videos);
+      $params['short_resutls'] = is_array($channel->short_videos) ? count($channel->short_videos) : 0;
       $params['resutls'] = count($collection);
     }
 
