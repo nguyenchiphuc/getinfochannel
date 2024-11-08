@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Log;
 use App\Models\Channel;
 use Illuminate\Support\Facades\Artisan;
 use Carbon\Carbon;
+use App\Models\Proxy;
 use GuzzleHttp\Client;
 use App\Models\Setting;
 
@@ -17,7 +18,7 @@ class HomeController extends Controller
   protected $setting;
   public function __construct() {
     $setting = Setting::where('id', 1)->first();
-    $this->proxy = $this->randomProxy($setting->proxys);
+    $this->proxy = Proxy::getProxy();
     $this->setting = $setting;
   }
   public function randomProxy($proxy) {
@@ -66,12 +67,12 @@ class HomeController extends Controller
     if($request->proxy == 'off') {
       $this->proxy = null;
     }
-    curl_setopt($ch, CURLOPT_PROXY, $this->proxy);
+    curl_setopt($ch, CURLOPT_PROXY, $this->proxy->proxy_string);
     echo '<span style="    position: absolute;
     left: 0;
     top: 0;
     color: red;
-    z-index: 9999999;">'.$this->proxy.'</span>';
+    z-index: 9999999;">'.$this->proxy->proxy_string.'</span>';
     $response = curl_exec($ch);
     die($response);
     curl_close($ch);
