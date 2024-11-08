@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Artisan;
 use Carbon\Carbon;
 use GuzzleHttp\Client;
 use App\Models\Setting;
+use App\Models\Proxy;
 use App\Libraries\Helpers;
 
 class TestController extends BaseController
@@ -18,7 +19,7 @@ class TestController extends BaseController
   protected $setting;
   public function __construct() {
     $setting = Setting::where('id', 1)->first();
-    $this->proxy = $this->randomProxy($setting->proxys);
+    $this->proxy = Proxy::getProxy();
     $this->setting = $setting;
   }
 
@@ -107,7 +108,7 @@ class TestController extends BaseController
       CURLOPT_TIMEOUT => 0,
       CURLOPT_FOLLOWLOCATION => true,
       CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-      CURLOPT_PROXY => $this->proxy,
+      CURLOPT_PROXY => $this->proxy->proxy_string,
       CURLOPT_CUSTOMREQUEST => 'GET',
       CURLOPT_HTTPHEADER => array(
         'Cookie: GPS=1; VISITOR_INFO1_LIVE=8Q0vdu_YCKE; VISITOR_PRIVACY_METADATA=CgJWThICGgA%3D; YSC=ZaE57vZNiI8'
@@ -242,12 +243,16 @@ class TestController extends BaseController
         CURLOPT_TIMEOUT => 10,
         CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-        CURLOPT_PROXY => $this->proxy,
+        CURLOPT_PROXY => $this->proxy->proxy_string,
         CURLOPT_CUSTOMREQUEST => 'GET',
         CURLOPT_HTTPHEADER => array(
           'Cookie: GPS=1; VISITOR_INFO1_LIVE=8Q0vdu_YCKE; VISITOR_PRIVACY_METADATA=CgJWThICGgA%3D; YSC=ZaE57vZNiI8'
         ),
       ));
+      $channel->proxy = $this->proxy->proxy_string;
+      $this->proxy->count_used = $this->proxy->count_used + 1;
+      $this->proxy->save();
+      $channel->save();
     }else{
       curl_setopt_array($curl, array(
         CURLOPT_URL => 'https://www.youtube.com/channel/' . $channelId . '/'.$typeChannel,
@@ -262,11 +267,13 @@ class TestController extends BaseController
           'Cookie: GPS=1; VISITOR_INFO1_LIVE=8Q0vdu_YCKE; VISITOR_PRIVACY_METADATA=CgJWThICGgA%3D; YSC=ZaE57vZNiI8'
         ),
       ));
+      $channel->proxy = null;
+      $channel->save();
     }
     
     $response = curl_exec($curl);
     if (!$response && curl_errno($curl)) {
-      $collection = ['error' => ($this->setting->using_proxy ? $this->proxy : 'No proxy')." error time out ".curl_error($curl)];
+      $collection = ['error' => ($this->setting->using_proxy ? $this->proxy->proxy_string : 'No proxy')." error time out ".curl_error($curl)];
       return $collection;
     }
     curl_close($curl);
@@ -452,6 +459,8 @@ class TestController extends BaseController
     $to = Carbon::createFromFormat('Y-m-d H:s:i', Carbon::now());
     $channel = Channel::where('channel_id', $string)->first();
     $params = ['connect_db' => 0, 'count_video' => @$channel->count_video, 'subscribe' => 0, 'videos' => [], 'channel_id' => $string, 'resutls' => 0];
+    $params['using_proxy'] = $this->setting->using_proxy;
+    $params['proxy'] = $channel->proxy;
     if ($channel && ($channel->videos || $channel->channel_videos)) {
       $params['connect_db'] = 1;
     } else {

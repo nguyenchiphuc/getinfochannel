@@ -37,7 +37,7 @@ class HomeController extends Controller
   }
 
   public function proxy(Request $request) {
-    Setting::where('id', 1)->update(['proxys' => $request->proxys,'token' => $request->token, 'using_proxy' => $request->using_proxy]);
+    Setting::where('id', 1)->update(['api_proxy_get' => $request->api_proxy_get,'token' => $request->token, 'using_proxy' => $request->using_proxy]);
     return redirect()->back(); 
   }
 

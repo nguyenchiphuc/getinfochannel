@@ -19,6 +19,8 @@ class Kernel extends ConsoleKernel
         $schedule->command('get:durution')->cron('*/20 * * * *');
         $schedule->command('get:order-list')->everyMinute();
         $schedule->command('get:videos')->cron('*/20 * * * *');
+        $schedule->command('get:proxy')->everyMinute();
+        $schedule->command('update:proxy')->dailyAt('00:00');
     }
 
     /**
