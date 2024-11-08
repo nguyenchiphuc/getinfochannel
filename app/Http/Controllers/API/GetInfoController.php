@@ -200,7 +200,7 @@ class GetInfoController extends BaseController
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_ENCODING => '',
         CURLOPT_MAXREDIRS => 10,
-        CURLOPT_TIMEOUT => 0,
+        CURLOPT_TIMEOUT => 10,
         CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
         CURLOPT_PROXY => $this->proxy,
@@ -215,7 +215,7 @@ class GetInfoController extends BaseController
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_ENCODING => '',
         CURLOPT_MAXREDIRS => 10,
-        CURLOPT_TIMEOUT => 0,
+        CURLOPT_TIMEOUT => 10,
         CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
         CURLOPT_CUSTOMREQUEST => 'GET',
@@ -226,6 +226,10 @@ class GetInfoController extends BaseController
     }
 
     $response = curl_exec($curl);
+    if (!$response && curl_errno($curl)) {
+      $collection = ['error' => ($this->setting->using_proxy ? $this->proxy : 'No proxy')." error time out ".curl_error($curl)];
+      return $collection;
+    }
     curl_close($curl);
     $collection = collect([]);
     if ($response != null) {
@@ -388,7 +392,7 @@ class GetInfoController extends BaseController
         })->values()->toArray();
         return $collection;
       } else {
-        Helpers::sendTelegramError('not find ytInitialData ' . $channelId);
+        Helpers::sendTelegramError('not find ytInitialData ' . $channelId.'-'.\Request::getHost());
         Log::error('not find ytInitialData ' . $channelId);
       }
     }
@@ -397,6 +401,9 @@ class GetInfoController extends BaseController
 
   public function getListVideo(Request $request, $string)
   {
+    if($request->using_proxy) {
+      $this->setting->using_proxy = $request->using_proxy;
+    }
     $duration = $request->duration ? $request->duration : 60;
     $diffDay = $request->diffDay ? $request->diffDay : 0;
 
@@ -410,10 +417,13 @@ class GetInfoController extends BaseController
         ['channel_id' => $string],
         ['channel_id' => $string]
       );
-      $this->getVideos($channel);
+      $lists = $this->getVideos($channel);
       $params['connect_db'] = 0;
     }
-    $this->getVideos($channel);
+    $lists =  $this->getVideos($channel);
+    if(is_array($lists) && !empty($lists['error'])) {
+      return response()->json($lists);
+    }
     $params['order_link'] = $channel->order_link;
     $params['count_video'] = $channel->count_video;
     $videosDiff = [];
@@ -482,6 +492,9 @@ class GetInfoController extends BaseController
     // if(count($listVideo) == 0) {
     //   $listVideo = $this->getListVideoFuncFeatured($channel->channel_id, 60, 0);
     // }
+    if(is_array($listVideo) && !empty($listVideo['error'])) {
+      return ['error' => $listVideo['error']];
+    }
     if(count($listVideo) == 0) {
       $listVideo = $this->getListVideoFunc($channel, 60, 0, 'streams');
     }
