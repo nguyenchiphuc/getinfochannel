@@ -58,8 +58,8 @@ class GetProxy extends Command
             if(count($arrProxy) == 4) {
                 $ipv4 = $arrProxy[0];
                 $port = $arrProxy[1];
-                $user = $arrProxy[2];
-                $pass = $arrProxy[3];
+                $user = $arrProxy[3];
+                $pass = $arrProxy[2];
                 $proxy_string = $user.':'.$pass.'@'.$ipv4.':'.$port;
             }else if(count($arrProxy) == 2) {
                 $ipv4 = $arrProxy[0];
