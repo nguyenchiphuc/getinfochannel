@@ -460,7 +460,7 @@ class TestController extends BaseController
     $channel = Channel::where('channel_id', $string)->first();
     $params = ['connect_db' => 0, 'count_video' => @$channel->count_video, 'subscribe' => 0, 'videos' => [], 'channel_id' => $string, 'resutls' => 0];
     $params['using_proxy'] = $this->setting->using_proxy;
-    $params['proxy'] = $channel->proxy;
+    $params['proxy'] = $this->proxy->proxy_string;
     if ($channel && ($channel->videos || $channel->channel_videos)) {
       $params['connect_db'] = 1;
     } else {
