@@ -204,15 +204,17 @@ class GetInfoController extends BaseController
         CURLOPT_TIMEOUT => 10,
         CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-        CURLOPT_PROXY => $this->proxy->proxy_string,
+        CURLOPT_PROXY => @$this->proxy->proxy_string,
         CURLOPT_CUSTOMREQUEST => 'GET',
         CURLOPT_HTTPHEADER => array(
           'Cookie: GPS=1; VISITOR_INFO1_LIVE=8Q0vdu_YCKE; VISITOR_PRIVACY_METADATA=CgJWThICGgA%3D; YSC=ZaE57vZNiI8'
         ),
       ));
-      $channel->proxy = $this->proxy->proxy_string;
-      $this->proxy->count_used = $this->proxy->count_used + 1;
-      $this->proxy->save();
+      $channel->proxy = @$this->proxy->proxy_string;
+      if($this->proxy) {
+        $this->proxy->count_used = $this->proxy->count_used + 1;
+        $this->proxy->save();
+      }
       $channel->save();
     }else{
       curl_setopt_array($curl, array(
@@ -418,7 +420,7 @@ class GetInfoController extends BaseController
     $channel = Channel::where('channel_id', $string)->first();
     $params = ['connect_db' => 0, 'count_video' => @$channel->count_video, 'subscribe' => 0, 'videos' => [], 'channel_id' => $string, 'resutls' => 0];
     $params['using_proxy'] = $this->setting->using_proxy;
-    $params['proxy'] = $this->proxy->proxy_string;
+    $params['proxy'] = @$this->proxy->proxy_string;
     if ($channel && ($channel->videos || $channel->channel_videos)) {
       $params['connect_db'] = 1;
     } else {
