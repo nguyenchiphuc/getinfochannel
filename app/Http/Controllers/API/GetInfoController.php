@@ -401,8 +401,8 @@ class GetInfoController extends BaseController
         })->values()->toArray();
         return $collection;
       } else {
-        Helpers::sendTelegramError('not find ytInitialData ' . $channelId.'-'.\Request::getHost());
-        Log::error('not find ytInitialData ' . $channelId);
+        Helpers::sendTelegramError('not find ytInitialData ' . $channelId.'-'.\Request::getHost().'-'.$response);
+        Log::error('not find ytInitialData ' . $channelId.'-'.$response);
       }
     }
     return $collection;
