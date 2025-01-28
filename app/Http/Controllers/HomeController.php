@@ -27,7 +27,7 @@ class HomeController extends Controller
     return $proxyArr[$index];
   }
   public function index(Request $request) {
-    Artisan::call('get:proxy');
+    // Artisan::call('get:proxy');
     $setting = Setting::where('id', 1)->first();
     if(!$setting) {
       $setting = Setting::create(['token' => 'tuandm']);
