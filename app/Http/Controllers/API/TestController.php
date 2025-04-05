@@ -279,8 +279,84 @@ class TestController extends BaseController
     curl_close($curl);
     
     $collection = collect([]);
+
     if ($response != null) {
-      
+      preg_match('/\,\{\"metadataParts\"\:\[\{\"text\"\:\{\"content\"\:\"([^\"]+)?/', $response, $ccoutput_array);
+      if(count($ccoutput_array) > 0) {
+        $firstSub = $ccoutput_array[1];
+        $firstSub = str_replace(' subscribers', '', $firstSub);
+        $firstSub = str_replace(' người đăng ký', '', $firstSub);
+        $sub = $ccoutput_array[1];
+        $sub = str_replace(' subscribers', '', $sub);
+        $sub = str_replace(' người đăng ký', '', $sub);
+        if (strpos($sub, ',') !== false) {
+            $sub1 = explode(',', $sub);
+            $first = @$sub1[0];
+            $last = @$sub1[1];
+            $len = strlen($first);
+            
+            $sub = str_replace(',', '', $sub);
+            $sub = (int) $sub;
+            // dd($sub);
+            
+            if($len == 1){
+                $sub = $sub.'0';
+                if(strlen($last) == 2) {
+                    $sub = str_replace(',', '', $firstSub);
+                    $sub = (int) $sub;
+                    $sub = $sub.'00';
+                }
+            }else if($len == 2){
+                $sub = $sub.'00';
+            }else if($len == 3){
+                $sub = $sub.'000';
+            }
+            // dd($sub);
+            if (strpos($firstSub, 'M') !== false) {
+                $sub = str_replace(',', '', $firstSub);
+                $sub = str_replace('M', '0000', $sub);
+            }
+        }
+        if (strpos($sub, '.') !== false) {
+            $sub1 = explode('.', $sub);
+            $first = @$sub1[0];
+            $last = @$sub1[1];
+            $len = strlen($first);
+            
+            $sub = str_replace('.', '', $sub);
+            $sub = (int) $sub;
+            // dd($sub);
+            
+            if($len == 1){
+                $sub = $sub.'0';
+                if(strlen($last) == 2) {
+                    $sub = str_replace('.', '', $firstSub);
+                    $sub = (int) $sub;
+                    $sub = $sub.'00';
+                }
+            }else if($len == 2){
+                $sub = $sub.'00';
+            }else if($len == 3){
+                $sub = $sub.'000';
+            }
+            // dd($sub);
+            if (strpos($firstSub, 'M') !== false) {
+                $sub = str_replace('.', '', $firstSub);
+                $sub = str_replace('M', '0000', $sub);
+            }
+        }else{
+            $sub = str_replace('K', '000', $sub);
+        }
+        $initSub = (int) $sub;
+        $minCheckSub = 50;
+        if(strlen($initSub) == 6) {
+            $minCheckSub = 1000;
+        }else if(strlen($initSub) == 5) {
+            $minCheckSub = 100;
+        }
+        $channel->current_subs = $initSub;
+        $channel->save();
+      }
       if (strpos($response, 'Tài khoản này đã bị chấm dứt do chúng tôi nhận được nhiều đơn khiếu nại của bên thứ ba về việc vi phạm bản quyền liên quan đến tư liệu mà người dùng này đăng tải.') !== false || strpos($response, 'Kênh này đã bị gỡ bỏ do vi phạm Nguyên tắc cộng đồng của chúng tôi.') !== false) {
         $channel->order_link = 'channel_is_die';
         $channel->save();
