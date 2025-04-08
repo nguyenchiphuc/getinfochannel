@@ -282,6 +282,13 @@ class TestController extends BaseController
 
     if ($response != null) {
       preg_match('/\,\{\"metadataParts\"\:\[\{\"text\"\:\{\"content\"\:\"([^\"]+)?/', $response, $ccoutput_array);
+      if(count($ccoutput_array) == 0) {
+        preg_match('/{"text":{"content":"(.*?)người đăng ký/', $response, $ccoutput_array);
+        if(count($ccoutput_array) > 1) {
+          $content = $ccoutput_array[1]."người đăng ký";
+          preg_match('/{"text":{"content":"(.*?)người đăng ký/', $content, $ccoutput_array);
+        }
+      }
       if(count($ccoutput_array) > 0) {
         $firstSub = $ccoutput_array[1];
         $firstSub = str_replace(' subscribers', '', $firstSub);
@@ -289,6 +296,7 @@ class TestController extends BaseController
         $sub = $ccoutput_array[1];
         $sub = str_replace(' subscribers', '', $sub);
         $sub = str_replace(' người đăng ký', '', $sub);
+        $sub = str_replace("\u{A0}", '', $sub);
         if (strpos($sub, ',') !== false) {
             $sub1 = explode(',', $sub);
             $first = @$sub1[0];
@@ -316,6 +324,8 @@ class TestController extends BaseController
                 $sub = str_replace(',', '', $firstSub);
                 $sub = str_replace('M', '0000', $sub);
             }
+        }else{
+          $sub = str_replace('N', '000', $sub);
         }
         if (strpos($sub, '.') !== false) {
             $sub1 = explode('.', $sub);
