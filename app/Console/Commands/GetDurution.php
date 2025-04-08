@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use App\Models\Channel;
 use Illuminate\Support\Facades\Log;
+use DB;
 
 class GetDurution extends Command
 {
@@ -29,6 +30,9 @@ class GetDurution extends Command
    */
   public function handle()
   {
+    DB::table('logs')
+    ->where('created_at', '<', now()->subDays(7))
+    ->delete();
     $limit = round(Channel::count() / config('app.limit') / 3) + 20;
     $channels = Channel::orderBy('id', 'desc')->where('status', 0)->limit($limit)->get();
     foreach ($channels as $channel) {
