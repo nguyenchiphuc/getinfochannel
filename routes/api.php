@@ -22,4 +22,5 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 Route::pattern('string', '([A-Za-z0-9_-]+)');
 Route::get('/getListVideo/{string}',  [GetInfoController::class, 'getListVideo']);
 Route::get('/test/{string}',  [TestController::class, 'getListVideo']);
+Route::get('/test-tik',  [TestController::class, 'urlTik']);
 Route::get('/test-url',  [TestController::class, 'testUrl']);

@@ -367,7 +367,7 @@ class TestController extends BaseController
         $channel->current_subs = $initSub;
         $channel->save();
       }
-      if (strpos($response, 'Tài khoản này đã bị chấm dứt do chúng tôi nhận được nhiều đơn khiếu nại của bên thứ ba về việc vi phạm bản quyền liên quan đến tư liệu mà người dùng này đăng tải.') !== false || strpos($response, 'Kênh này đã bị gỡ bỏ do vi phạm Nguyên tắc cộng đồng của chúng tôi.') !== false) {
+      if (strpos($response, 'Tài khoản này đã bị chấm dứt do chúng tôi nhận được nhiều đơn khiếu nại của bên thứ ba về việc vi phạm bản quyền liên quan đến tư liệu mà người dùng này đăng tải.') !== false || strpos($response, 'Kênh này đã bị gỡ bỏ do vi phạm Nguyên tắc cộng đồng của chúng tôi.') !== false || strpos($response, 'Kênh này không tồn tại.') !== false) {
         $channel->order_link = 'channel_is_die';
         $channel->save();
       }
