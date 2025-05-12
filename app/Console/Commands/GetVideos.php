@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use App\Models\Channel;
 use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
 
 class GetVideos extends Command
 {
@@ -29,6 +30,8 @@ class GetVideos extends Command
    */
   public function handle()
   {
+    $cutoff = Carbon::now()->subDays(2);
+    $channels = Channel::where('created_at', '<', $cutoff)->delete();
     \App\Models\Log::where('created_at', '<', \Carbon\Carbon::now()->subDays(config('app.log_delete')))->delete();
     \App\Models\Channel::where('created_at', '<', \Carbon\Carbon::now()->subDays(config('app.channel_delete')))->delete();
     $limit = round(Channel::count() / config('app.limit') / 3) + 20;

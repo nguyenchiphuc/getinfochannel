@@ -32,6 +32,7 @@ class UpdateUsedProxy extends Command
   public function handle()
   {
     $setting = Setting::first();
+    Channel::truncate();
     Proxy::whereIn('status', [1, 0])->update(['count_used' => 0]);
     return Command::SUCCESS;
   }
