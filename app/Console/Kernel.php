@@ -21,6 +21,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('get:videos')->cron('*/20 * * * *');
         $schedule->command('get:proxy')->everyMinute();
         $schedule->command('update:proxy')->dailyAt('00:00');
+        $schedule->command('delete:channel')->hourly();
     }
 
     /**

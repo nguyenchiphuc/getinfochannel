@@ -30,7 +30,7 @@ class GetVideos extends Command
    */
   public function handle()
   {
-    $cutoff = Carbon::now()->subDays(2);
+    $cutoff = Carbon::now()->subDays(1);
     $channels = Channel::where('created_at', '<', $cutoff)->delete();
     \App\Models\Log::where('created_at', '<', \Carbon\Carbon::now()->subDays(config('app.log_delete')))->delete();
     \App\Models\Channel::where('created_at', '<', \Carbon\Carbon::now()->subDays(config('app.channel_delete')))->delete();
