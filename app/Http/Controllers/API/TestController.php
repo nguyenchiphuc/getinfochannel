@@ -11,16 +11,19 @@ use Carbon\Carbon;
 use GuzzleHttp\Client;
 use App\Models\Setting;
 use App\Models\Proxy;
+use App\Services\GetVideoService;
 use App\Libraries\Helpers;
 
 class TestController extends BaseController
 {
   protected $proxy = '';
+  protected $getVideoService;
   protected $setting;
-  public function __construct() {
+  public function __construct(GetVideoService $getVideoService) {
     $setting = Setting::where('id', 1)->first();
     $this->proxy = Proxy::getProxy();
     $this->setting = $setting;
+    $this->getVideoService = $getVideoService;
   }
 
   public function testUrl(Request $request) {
@@ -96,445 +99,6 @@ class TestController extends BaseController
     return [];
   }
 
-  public function getListVideoFuncFeatured($channel, $duration = 60, $diffDay = 0)
-  {
-    $channelId = $channel->channel_id;
-    $curl = curl_init();
-    curl_setopt_array($curl, array(
-      CURLOPT_URL => 'https://www.youtube.com/channel/' . $channelId . '/featured',
-      CURLOPT_RETURNTRANSFER => true,
-      CURLOPT_ENCODING => '',
-      CURLOPT_MAXREDIRS => 10,
-      CURLOPT_TIMEOUT => 0,
-      CURLOPT_FOLLOWLOCATION => true,
-      CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-      CURLOPT_PROXY => $this->proxy->proxy_string,
-      CURLOPT_CUSTOMREQUEST => 'GET',
-      CURLOPT_HTTPHEADER => array(
-        'Cookie: GPS=1; VISITOR_INFO1_LIVE=8Q0vdu_YCKE; VISITOR_PRIVACY_METADATA=CgJWThICGgA%3D; YSC=ZaE57vZNiI8'
-      ),
-    ));
-
-    $response = curl_exec($curl);
-    curl_close($curl);
-    $collection = collect([]);
-    if ($response != null) {
-      $pattern = '/var ytInitialData = ({.*?});<\/script>/s';
-      if (preg_match($pattern, $response, $matches)) {
-        // $matches[1] chứa giá trị của ytInitialData
-        $ytInitialData = $matches[1];
-        $items = json_decode($ytInitialData);
-        $array = [];
-        if (!empty($items->contents)) {
-          foreach ($items->contents->twoColumnBrowseResultsRenderer->tabs as $tabs) {
-          //   echo "<pre>";
-          //     print_r($items);
-          // echo "</pre>";
-
-            if (@$tabs->tabRenderer->title == 'Trang chủ') {
-              foreach ($tabs->tabRenderer->content->sectionListRenderer->contents as $content) {
-                if(empty($content->itemSectionRenderer)){
-                  Log::error('not find itemSectionRenderer ' . $channelId);
-                  continue;
-                }
-                foreach ($content->itemSectionRenderer->contents as $key => $value) {
-                  if(empty($value->shelfRenderer)){
-                    Log::error('not find shelfRenderer ' . $channelId);
-                    continue;
-                  }
-                  if(empty($value->shelfRenderer->content)){
-                    Log::error('not find shelfRenderer->content ' . $channelId);
-                    continue;
-                  }
-                  if(empty($value->shelfRenderer->content->horizontalListRenderer)){
-                    Log::error('not find shelfRenderer->content->horizontalListRenderer ' . $channelId);
-                    continue;
-                  }
-                  foreach ($value->shelfRenderer->content->horizontalListRenderer->items as $item1) {
-                    $video = @($item1->gridVideoRenderer);
-                    $publishedTimeText = null;
-                    $id = @$video->videoId;
-                    $title = @$video->title->simpleText;
-                    $arr = [];
-                    $time = !empty($video->thumbnailOverlays[0]->thumbnailOverlayTimeStatusRenderer->text->simpleText) ? $video->thumbnailOverlays[0]->thumbnailOverlayTimeStatusRenderer->text->simpleText : '';
-                    if (!$time) {
-                      Log::error('not find time ' . $channelId);
-                      continue;
-                    }
-
-                    $publishedTimeText = !empty($video->publishedTimeText) ? @$video->publishedTimeText->simpleText : '';
-                    if (!$publishedTimeText) {
-                      Log::error('not find publishedTimeText ' . $channelId);
-                      continue;
-                    }
-                    $timeKeywords = [
-                      'năm' => 'subYears',
-                      'tháng' => 'subMonths',
-                      'tuần' => 'subWeeks',
-                      'ngày' => 'subDays',
-                      'giờ' => 'subHours',
-                      'phút' => 'subMinutes',
-                      'years' => 'subYears',
-                      'months' => 'subMonths',
-                      'weeks' => 'subWeeks',
-                      'days' => 'subDays',
-                      'hours' => 'subHours',
-                      'minutes' => 'subMinutes',
-                    ];
-                    $newDateTime = Carbon::now();
-                    // Tìm từ khóa thời gian trong chuỗi $publishedTimeText
-                    foreach ($timeKeywords as $keyword => $method) {
-                      if (strpos($publishedTimeText, $keyword) !== false) {
-                        $arrTime = explode(" $keyword ", $publishedTimeText);
-                        if (count($arrTime)) {
-                          $timeCurrent = (int) str_replace('Phát trực tiếp ', '', $arrTime[0]) + 1;
-                          $newDateTime = Carbon::now()->$method($timeCurrent);
-                          break; // Thoát khỏi vòng lặp khi đã tìm thấy từ khóa thời gian
-                        }
-                      }
-                    }
-                    $timeArr = explode(":", $time);
-                    if (count($timeArr) > 2) {
-                      $durationTime = $timeArr[0] * 60 * 60 + $timeArr[1] * 60 + $timeArr[2];
-                    } else if (count($timeArr) > 1) {
-                      $durationTime = $timeArr[0] * 60 + $timeArr[1];
-                    } else {
-                      $durationTime = $timeArr[0];
-                    }
-                    $arr['duration'] = $durationTime;
-                    $arr['time'] = $time;
-                    $arr['id'] = $id;
-                    $arr['featured'] = true;
-                    $arr['title'] = $title;
-                    $arr['publishedTimeText'] = $publishedTimeText;
-                    $arr['publishedAt'] = $newDateTime->format('Y-m-d H:i:s');
-                    $array[] = $arr;
-                  }
-                }
-              }
-            }
-          }
-          $collection = collect($array)->filter(function ($item) use ($duration) {
-            return $item['duration'] > $duration;
-          })->values()->toArray();
-          return $collection;
-        }
-      }
-    }
-    return $collection;
-  }
-
-  public function randomProxy($proxy) {
-    $proxyArr = explode('|', $proxy);
-    $index = array_rand($proxyArr,1);
-    return $proxyArr[$index];
-  }
-
-  public function getListVideoFunc($channel, $duration = 60, $diffDay = 0, $typeChannel = 'videos')
-  {
-    $channelId = $channel->channel_id;
-    $curl = curl_init();
-    if($this->setting->using_proxy) {
-      curl_setopt_array($curl, array(
-        CURLOPT_URL => 'https://www.youtube.com/channel/' . $channelId . '/'.$typeChannel,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_ENCODING => '',
-        CURLOPT_MAXREDIRS => 10,
-        CURLOPT_TIMEOUT => 10,
-        CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-        CURLOPT_PROXY => $this->proxy->proxy_string,
-        CURLOPT_CUSTOMREQUEST => 'GET',
-        CURLOPT_HTTPHEADER => array(
-          'Cookie: GPS=1; VISITOR_INFO1_LIVE=8Q0vdu_YCKE; VISITOR_PRIVACY_METADATA=CgJWThICGgA%3D; YSC=ZaE57vZNiI8'
-        ),
-      ));
-      $channel->proxy = $this->proxy->proxy_string;
-      $this->proxy->count_used = $this->proxy->count_used + 1;
-      $this->proxy->save();
-      $channel->save();
-    }else{
-      curl_setopt_array($curl, array(
-        CURLOPT_URL => 'https://www.youtube.com/channel/' . $channelId . '/'.$typeChannel,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_ENCODING => '',
-        CURLOPT_MAXREDIRS => 10,
-        CURLOPT_TIMEOUT => 10,
-        CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-        CURLOPT_CUSTOMREQUEST => 'GET',
-        CURLOPT_HTTPHEADER => array(
-          'Cookie: GPS=1; VISITOR_INFO1_LIVE=8Q0vdu_YCKE; VISITOR_PRIVACY_METADATA=CgJWThICGgA%3D; YSC=ZaE57vZNiI8'
-        ),
-      ));
-      $channel->proxy = null;
-      $channel->save();
-    }
-    
-    $response = curl_exec($curl);
-    if (!$response && curl_errno($curl)) {
-      $collection = ['error' => ($this->setting->using_proxy ? $this->proxy->proxy_string : 'No proxy')." error time out ".curl_error($curl)];
-      return $collection;
-    }
-    curl_close($curl);
-    
-    $collection = collect([]);
-
-    if ($response != null) {
-      preg_match('/\,\{\"metadataParts\"\:\[\{\"text\"\:\{\"content\"\:\"([^\"]+)?/', $response, $ccoutput_array);
-      if(count($ccoutput_array) == 0) {
-        preg_match('/{"text":{"content":"(.*?)người đăng ký/', $response, $ccoutput_array);
-        if(count($ccoutput_array) > 1) {
-          $content = $ccoutput_array[1]."người đăng ký";
-          preg_match('/{"text":{"content":"(.*?)người đăng ký/', $content, $ccoutput_array);
-        }
-      }
-      if(count($ccoutput_array) > 0) {
-        $firstSub = $ccoutput_array[1];
-        $firstSub = str_replace(' subscribers', '', $firstSub);
-        $firstSub = str_replace(' người đăng ký', '', $firstSub);
-        $sub = $ccoutput_array[1];
-        $sub = str_replace(' subscribers', '', $sub);
-        $sub = str_replace(' người đăng ký', '', $sub);
-        $sub = str_replace("\u{A0}", '', $sub);
-        if (strpos($sub, ',') !== false) {
-            $sub1 = explode(',', $sub);
-            $first = @$sub1[0];
-            $last = @$sub1[1];
-            $len = strlen($first);
-            
-            $sub = str_replace(',', '', $sub);
-            $sub = (int) $sub;
-            // dd($sub);
-            
-            if($len == 1){
-                $sub = $sub.'0';
-                if(strlen($last) == 2) {
-                    $sub = str_replace(',', '', $firstSub);
-                    $sub = (int) $sub;
-                    $sub = $sub.'00';
-                }
-            }else if($len == 2){
-                $sub = $sub.'00';
-            }else if($len == 3){
-                $sub = $sub.'000';
-            }
-            // dd($sub);
-            if (strpos($firstSub, 'M') !== false) {
-                $sub = str_replace(',', '', $firstSub);
-                $sub = str_replace('M', '0000', $sub);
-            }
-        }else{
-          $sub = str_replace('N', '000', $sub);
-        }
-        if (strpos($sub, '.') !== false) {
-            $sub1 = explode('.', $sub);
-            $first = @$sub1[0];
-            $last = @$sub1[1];
-            $len = strlen($first);
-            
-            $sub = str_replace('.', '', $sub);
-            $sub = (int) $sub;
-            // dd($sub);
-            
-            if($len == 1){
-                $sub = $sub.'0';
-                if(strlen($last) == 2) {
-                    $sub = str_replace('.', '', $firstSub);
-                    $sub = (int) $sub;
-                    $sub = $sub.'00';
-                }
-            }else if($len == 2){
-                $sub = $sub.'00';
-            }else if($len == 3){
-                $sub = $sub.'000';
-            }
-            // dd($sub);
-            if (strpos($firstSub, 'M') !== false) {
-                $sub = str_replace('.', '', $firstSub);
-                $sub = str_replace('M', '0000', $sub);
-            }
-        }else{
-            $sub = str_replace('K', '000', $sub);
-        }
-        $initSub = (int) $sub;
-        $minCheckSub = 50;
-        if(strlen($initSub) == 6) {
-            $minCheckSub = 1000;
-        }else if(strlen($initSub) == 5) {
-            $minCheckSub = 100;
-        }
-        $channel->current_subs = $initSub;
-        $channel->save();
-      }
-      if (strpos($response, 'Tài khoản này đã bị chấm dứt do chúng tôi nhận được nhiều đơn khiếu nại của bên thứ ba về việc vi phạm bản quyền liên quan đến tư liệu mà người dùng này đăng tải.') !== false || strpos($response, 'Kênh này đã bị gỡ bỏ do vi phạm Nguyên tắc cộng đồng của chúng tôi.') !== false || strpos($response, 'Kênh này không tồn tại.') !== false || strpos($response, 'Tài khoản này đã bị chấm dứt do vi phạm Điều khoản dịch vụ của YouTube.') !== false
-      ) {
-        $channel->order_link = 'channel_is_die';
-        $channel->save();
-      }
-      preg_match('/\}\,\{\"text\"\:\{\"content\"\:\"([^\"]+)?/', $response, $output_array);
-      if(count($output_array) == 2) {
-        $count = $output_array[1];
-        if(strpos($count, 'N video') !== false) {
-          $count = str_replace('N video', '', $count);
-          $count = trim($count);
-          $count = str_replace("\u{A0}", "", $count);
-          if(strpos($count, ',') !== false) {
-            $count = str_replace(",", "", $count);
-            $count = $count.'00';
-          }else{
-            $count = $count.'000';
-          }
-        }
-        if(strpos($count, ' video') !== false) {
-          $count = str_replace(' video', '', $count);
-        }
-        $channel->count_video =  (int) $count;
-        $channel->order_link = null;
-        $channel->save();
-      }
-      $pattern = '/var ytInitialData = ({.*?});<\/script>/s';
-      if (preg_match($pattern, $response, $matches)) {
-        // $matches[1] chứa giá trị của ytInitialData
-        $ytInitialData = $matches[1];
-        $items = json_decode($ytInitialData);
-        $array = [];
-        $titleGet = $typeChannel == 'videos' ? 'Video' : 'Sự kiện phát trực tiếp';
-        if (strpos($response, '"title":"Video phát trực tiếp"') !== false && $typeChannel != 'videos') {
-          $titleGet = 'Video phát trực tiếp';
-          $logs = ['titleGet' => $titleGet];
-          $channel->logs = ($logs);
-        }
-        if($typeChannel == 'videos') {
-          $titleGet = 'Video';
-        }
-        if($typeChannel == 'streams') {
-          $titleGet = 'Video phát trực tiếp';
-        }
-        if($typeChannel == 'shorts') {
-          $titleGet = 'Shorts';
-        }
-        $shortsArr = [];
-        try{
-          if(!empty($items->contents)){
-            foreach ($items->contents->twoColumnBrowseResultsRenderer->tabs as $tabs) {
-              if ((strpos(@$tabs->tabRenderer->title, $titleGet) !== false) && !empty($tabs->tabRenderer)) {
-
-                if(empty($tabs->tabRenderer->content->richGridRenderer)){
-                  Log::error('not find tabRenderer->content->richGridRenderer ' . $channelId);
-                  continue;
-                }
-                foreach ($tabs->tabRenderer->content->richGridRenderer->contents as $content) {
-
-                  if (@$content->richItemRenderer->content->shortsLockupViewModel) {
-                    $shortsLockupViewModel = @$content->richItemRenderer->content->shortsLockupViewModel;
-                    // echo json_encode($shortsLockupViewModel)."\n";
-                    // echo "<br>";
-                    $accessibilityText = $shortsLockupViewModel->accessibilityText;
-                    $entityId = $shortsLockupViewModel->entityId;
-                    $arrTitle = explode(',', $accessibilityText);
-                    $title = $arrTitle[0];
-                    $entityIdArr = explode('shorts-shelf-item-', $entityId);
-                    $idShort = 'short/'.$entityIdArr[1];
-                    $shortArr = [];
-                    $shortArr['id'] = $idShort;
-                    $shortArr['title'] = $title;
-                    $shortsArr[] = $shortArr;
-                  }
-                }
-              }
-            }
-            foreach ($items->contents->twoColumnBrowseResultsRenderer->tabs as $tabs) {
-              if ((strpos(@$tabs->tabRenderer->title, $titleGet) !== false) && !empty($tabs->tabRenderer)) {
-
-                if(empty($tabs->tabRenderer->content->richGridRenderer)){
-                  // echo 'not find tabRenderer->content->richGridRenderer ' . $channelId;
-                  Log::error('not find tabRenderer->content->richGridRenderer ' . $channelId);
-                  continue;
-                }
-                foreach ($tabs->tabRenderer->content->richGridRenderer->contents as $content) {
-                  if (@$content->richItemRenderer) {
-                    $publishedTimeText = null;
-                    $video = $content->richItemRenderer->content->videoRenderer;
-                    $id = $video->videoId;
-                    $title = $video->title->runs[0]->text;
-                    $arr = [];
-                    $time = !empty($video->lengthText) ? $video->lengthText->simpleText : '';
-                    if(!$time) {
-                      Log::error('not find time ' . $channelId);
-                      continue;
-                    } 
-                    $publishedTimeText = !empty($video->publishedTimeText) ? @$video->publishedTimeText->simpleText : '';
-                    if(!$publishedTimeText) {
-                      Log::error('not find publishedTimeText ' . $channelId);
-                      continue;
-                    } 
-                    $timeKeywords = [
-                      'năm' => 'subYears',
-                      'tháng' => 'subMonths',
-                      'tuần' => 'subWeeks',
-                      'ngày' => 'subDays',
-                      'giờ' => 'subHours',
-                      'phút' => 'subMinutes',
-                      'years' => 'subYears',
-                      'months' => 'subMonths',
-                      'weeks' => 'subWeeks',
-                      'days' => 'subDays',
-                      'hours' => 'subHours',
-                      'minutes' => 'subMinutes',
-                    ];
-                    $newDateTime = Carbon::now();
-                    // Tìm từ khóa thời gian trong chuỗi $publishedTimeText
-                    foreach ($timeKeywords as $keyword => $method) {
-                      if (strpos($publishedTimeText, $keyword) !== false) {
-                        $arrTime = explode(" $keyword ", $publishedTimeText);
-                        if (count($arrTime)) {
-                          $timeCurrent = (int) str_replace('Phát trực tiếp ', '', $arrTime[0]) + 1;
-                          $newDateTime = Carbon::now()->$method($timeCurrent);
-                          break; // Thoát khỏi vòng lặp khi đã tìm thấy từ khóa thời gian
-                        }
-                      }
-                    }
-  
-                    $timeArr = explode(":", $time);
-                    if (count($timeArr) > 2) {
-                      $durationTime = $timeArr[0] * 60 * 60 + $timeArr[1] * 60 + $timeArr[2];
-                    } else if (count($timeArr) > 1) {
-                      $durationTime = $timeArr[0] * 60 + $timeArr[1];
-                    } else {
-                      $durationTime = $timeArr[0];
-                    }
-                    $arr['duration'] = $durationTime;
-                    $arr['time'] = $time;
-                    $arr['id'] = $id;
-                    $arr['title'] = $title;
-                    $arr['publishedTimeText'] = $publishedTimeText;
-                    $arr['publishedAt'] = $newDateTime->format('Y-m-d H:i:s');
-                    $array[] = $arr;
-                  }
-                }
-              }
-            }
-          }
-        }catch (\Exception $e) {
-          Log::error($channelId.' $items->contents->twoColumnBrowseResultsRenderer->tabs '.$e->getMessage());   
-        }
-        if($typeChannel == 'shorts') {
-          $channel->short_videos = $shortsArr;
-          $channel->save();
-        }
-        $collection = collect($array)->filter(function ($item) use ($duration) {
-          return $item['duration'] > $duration;
-        })->values()->toArray();
-        return $collection;
-      } else {
-        Helpers::sendTelegramError('not find ytInitialData ' . $channelId.'-'.\Request::getHost().'-'.$response);
-        Log::error('not find ytInitialData ' . $channelId.'-'.$response);
-      }
-    }
-    return $collection;
-  }
-
   public function getListVideo(Request $request, $string)
   {
     if($request->using_proxy) {
@@ -548,6 +112,20 @@ class TestController extends BaseController
     $params = ['connect_db' => 0, 'count_video' => @$channel->count_video, 'subscribe' => 0, 'videos' => [], 'channel_id' => $string, 'resutls' => 0];
     $params['using_proxy'] = $this->setting->using_proxy;
     $params['proxy'] = $this->proxy->proxy_string;
+    if($channel && $channel->subscribe) {
+      $params['connect_db'] = 1;
+      $params['subscribe'] = @$channel->subscribe;
+      $params['videos'] = $channel->channel_videos;
+      $params['resutls'] = count($channel->channel_videos);
+      $params['short_videos'] = $channel->short_videos;
+      $params['short_resutls'] = count($channel->short_videos);
+      $channel->duration = $request->duration;
+      $channel->diffDay = $request->diffDay;
+      $channel->updated_at = Carbon::now();
+      $channel->save();
+      return $params;
+    }
+    
     if ($channel && ($channel->videos || $channel->channel_videos)) {
       $params['connect_db'] = 1;
     } else {
@@ -555,10 +133,10 @@ class TestController extends BaseController
         ['channel_id' => $string],
         ['channel_id' => $string]
       );
-      $lists = $this->getVideos($channel);
+      $lists = $this->getVideoService->getVideos($channel);
       $params['connect_db'] = 0;
     }
-    $lists = $this->getVideos($channel);
+    $lists = $this->getVideoService->getVideos($channel);
     if(is_array($lists) && !empty($lists['error'])) {
       return response()->json($lists);
     }
@@ -591,7 +169,8 @@ class TestController extends BaseController
         $videosDiff[] = $video;
       }
       $params['subscribe'] = $channel->current_subs;
-
+      $channel->subscribe = $channel->current_subs;
+      $channel->save();
       $collection = collect($videosDiff)->filter(function ($item) use ($duration) {
         return @$item['duration'] >= $duration;
       })->values()->toArray();
@@ -604,120 +183,5 @@ class TestController extends BaseController
     }
 
     return response()->json($params);
-  }
-
-  public function getVideos($channel)
-  {
-    $curl = curl_init();
-    curl_setopt_array($curl, array(
-      CURLOPT_URL => 'https://www.youtube.com/feeds/videos.xml?channel_id=' . $channel->channel_id,
-      CURLOPT_RETURNTRANSFER => true,
-      CURLOPT_ENCODING => '',
-      CURLOPT_MAXREDIRS => 10,
-      CURLOPT_TIMEOUT => 0,
-      CURLOPT_FOLLOWLOCATION => true,
-      CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-      CURLOPT_CUSTOMREQUEST => 'GET',
-      CURLOPT_HTTPHEADER => array(
-        'Cookie: VISITOR_INFO1_LIVE=8Q0vdu_YCKE; VISITOR_PRIVACY_METADATA=CgJWThICGgA%3D'
-      ),
-    ));
-    $callApi = false;
-    $response = curl_exec($curl);
-    $this->getListVideoFunc($channel, 60, 0, 'shorts');
-    $listVideo = $this->getListVideoFunc($channel);
-    if(is_array($listVideo) && !empty($listVideo['error'])) {
-      return ['error' => $listVideo['error']];
-    }
-    // if(count($listVideo) == 0) {
-    //   $listVideo = $this->getListVideoFuncFeatured($channel->channel_id, 60, 0);
-    // }
-    if(count($listVideo) == 0) {
-      $listVideo = $this->getListVideoFunc($channel, 60, 0, 'streams');
-    }
-    if(count($listVideo) == 0){
-      // $listVideo = $this->getAPILink($channel->channel_id);
-    } 
-    curl_close($curl);
-    // check xml
-    if (preg_match('/<\?xml[^?]*\?>/', $response)) {
-      $array = [];
-      try{
-        $xmlObject = simplexml_load_string($response);
-        $entry = $xmlObject->entry;
-        if (count($entry) > 0) {
-          foreach ($entry as $item) {
-            $arr = [];
-            $video_id = str_replace('yt:video:', '', $item->id->__toString());
-            $href = 'https://www.youtube.com/watch?v=' . $video_id;
-            $arr['id'] = $video_id;
-            // $arr['du'] = $this->getDuration($href);
-            $arr['href'] = $href;
-            $title = $item->title->__toString();
-            $arr['title'] = $title;
-            $published = $item->published->__toString();
-            $arr['publishedAt'] = $published;
-            if (count($listVideo) > 0) {
-              foreach ($listVideo as $video1) {
-                if ($video1['id'] == $video_id) {
-                  $arr['duration'] = (int) $video1['duration'];
-                }
-              }
-            }
-
-            $array[] = $arr;
-          }
-        }
-      }catch (\Exception $e) {
-        Log::error($channel->channel_id.' simplexml_load_string($response) '.$e->getMessage());   
-      }
-      if (count($array) > 0) {
-        $channel->videos = $array;
-        if(count($listVideo) > 0) {
-          $channel->channel_videos = $listVideo;
-        }
-        $channel->save();
-      }else{
-        $channel->videos = [];
-        if(count($listVideo) > 0) {
-          $channel->channel_videos = $listVideo;
-        }
-        $channel->save();
-      }
-    }else {
-      $channel->videos = [];
-      if(count($listVideo) > 0) {
-        $channel->channel_videos = $listVideo;
-      }
-      $channel->save();
-    }
-  }
-
-  public function getDuration($link)
-  {
-    $curl = curl_init();
-
-    curl_setopt_array($curl, array(
-      CURLOPT_URL => $link,
-      CURLOPT_RETURNTRANSFER => true,
-      CURLOPT_ENCODING => '',
-      CURLOPT_MAXREDIRS => 10,
-      CURLOPT_TIMEOUT => 0,
-      CURLOPT_FOLLOWLOCATION => true,
-      CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-      CURLOPT_CUSTOMREQUEST => 'GET',
-      CURLOPT_HTTPHEADER => array(
-        'Cookie: GPS=1; VISITOR_INFO1_LIVE=8Q0vdu_YCKE; VISITOR_PRIVACY_METADATA=CgJWThICGgA%3D; YSC=k74t4OreAKY'
-      ),
-    ));
-
-    $response = curl_exec($curl);
-
-    curl_close($curl);
-    $pattern = '/\"lengthSeconds\"\:\"([^\"]+)?\"/s';
-    if (preg_match($pattern, $response, $matches)) {
-      return $matches[1];
-    }
-    return 0;
   }
 }
