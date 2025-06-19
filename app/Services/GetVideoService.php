@@ -34,13 +34,13 @@ class GetVideoService
           CURLOPT_TIMEOUT => 10,
           CURLOPT_FOLLOWLOCATION => true,
           CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-          CURLOPT_PROXY => $this->proxy->proxy_string,
+          CURLOPT_PROXY => @$this->proxy->proxy_string,
           CURLOPT_CUSTOMREQUEST => 'GET',
           CURLOPT_HTTPHEADER => array(
             'Cookie: GPS=1; VISITOR_INFO1_LIVE=8Q0vdu_YCKE; VISITOR_PRIVACY_METADATA=CgJWThICGgA%3D; YSC=ZaE57vZNiI8'
           ),
         ));
-        $channel->proxy = $this->proxy->proxy_string;
+        $channel->proxy = @$this->proxy->proxy_string;
         $this->proxy->count_used = $this->proxy->count_used + 1;
         $this->proxy->save();
         $channel->save();
@@ -338,7 +338,7 @@ class GetVideoService
             CURLOPT_TIMEOUT => 0,
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-            CURLOPT_PROXY => $this->proxy->proxy_string,
+            CURLOPT_PROXY => @$this->proxy->proxy_string,
             CURLOPT_CUSTOMREQUEST => 'GET',
             CURLOPT_HTTPHEADER => array(
                 'Cookie: GPS=1; VISITOR_INFO1_LIVE=8Q0vdu_YCKE; VISITOR_PRIVACY_METADATA=CgJWThICGgA%3D; YSC=ZaE57vZNiI8'
