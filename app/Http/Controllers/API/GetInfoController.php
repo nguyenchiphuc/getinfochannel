@@ -72,15 +72,15 @@ class GetInfoController extends BaseController
     $to = Carbon::createFromFormat('Y-m-d H:s:i', Carbon::now());
     $channel = Channel::where('channel_id', $string)->first();
     $params = ['connect_db' => 0, 'count_video' => @$channel->count_video, 'subscribe' => 0, 'videos' => [], 'channel_id' => $string, 'resutls' => 0];
-    $params['using_proxy'] = $this->setting->using_proxy;
-    $params['proxy'] = $this->proxy->proxy_string;
+    $params['using_proxy'] = @$this->setting->using_proxy;
+    $params['proxy'] = @$this->proxy->proxy_string;
     if($channel && $channel->subscribe) {
       $params['connect_db'] = 1;
       $params['subscribe'] = @$channel->subscribe;
-      $params['videos'] = $channel->channel_videos;
-      $params['resutls'] = count($channel->channel_videos);
-      $params['short_videos'] = $channel->short_videos;
-      $params['short_resutls'] = count($channel->short_videos);
+      $params['videos'] = @$channel->channel_videos;
+      $params['resutls'] = @$channel->channel_videos ? count(@$channel->channel_videos) : 0;
+      $params['short_videos'] = @$channel->short_videos;
+      $params['short_resutls'] = @$channel->short_videos ? count(@$channel->short_videos) : 0;
       $channel->duration = $request->duration;
       $channel->diffDay = $request->diffDay;
       $channel->updated_at = Carbon::now();
