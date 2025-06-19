@@ -41,8 +41,11 @@ class GetVideoService
           ),
         ));
         $channel->proxy = @$this->proxy->proxy_string;
-        $this->proxy->count_used = $this->proxy->count_used + 1;
-        $this->proxy->save();
+        if($this->proxy) {
+          $this->proxy->count_used = @$this->proxy->count_used + 1;
+          $this->proxy->save();
+        }
+        
         $channel->save();
       }else{
         curl_setopt_array($curl, array(
