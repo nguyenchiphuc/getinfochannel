@@ -67,6 +67,7 @@ class GetProxy extends Command
                 $proxy_string = $newProxy;
             }
             $live = $this->checkLive($proxy_string);
+            echo $live."\n";
             if($live) {
                 echo "insert ".$proxy_string . "\n";
                 Proxy::updateOrCreate(['proxy_string' => $proxy_string],[
