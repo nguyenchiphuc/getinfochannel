@@ -68,12 +68,12 @@ class HomeController extends Controller
     if($request->proxy == 'off') {
       $this->proxy = null;
     }
-    curl_setopt($ch, CURLOPT_PROXY, $this->proxy->proxy_string);
+    curl_setopt($ch, CURLOPT_PROXY, @$this->proxy->proxy_string);
     echo '<span style="    position: absolute;
     left: 0;
     top: 0;
     color: red;
-    z-index: 9999999;">'.$this->proxy->proxy_string.'</span>';
+    z-index: 9999999;">'.@$this->proxy->proxy_string.'</span>';
     $response = curl_exec($ch);
     die($response);
     curl_close($ch);
