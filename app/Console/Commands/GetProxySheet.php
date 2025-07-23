@@ -39,7 +39,8 @@ class GetProxySheet extends Command
     $client = new Client();
     $client->setAuthConfig(storage_path('app/google-service-account.json'));
     $client->addScope(Sheets::SPREADSHEETS_READONLY);
-
+    $Proxy = Proxy::where('id', '>', 0);
+    $Proxy->delete();
     $service = new Sheets($client);
 
     $response = $service->spreadsheets_values->get($spreadsheetId, $range);
@@ -48,13 +49,26 @@ class GetProxySheet extends Command
 
     $listProxy = array_filter(array_map(fn($row) => $row[0] ?? null, $values));
     foreach($listProxy as $proxy) {
-        echo $proxy."\n";
+      $proxyS = $proxy;
+      $user = '';
+      $pass = '';
+      if (strpos($proxy, '@') !== false) {
+        $proArr = explode('@', $proxy);
+        $user1 = $proArr[0];
+        $arrUser = explode(':', $user1);
+        $user = $arrUser[0];
+        $pass = $arrUser[1];
+        $proxy = $proArr[1];
+      }
+        echo $proxyS."\n";
         $arrProxy = explode(':', $proxy);
         Proxy::updateOrCreate([
-            'proxy_string' => $proxy],[
-            'proxy_string' => $proxy,
+            'proxy_string' => $proxyS],[
+            'proxy_string' => $proxyS,
             'ipv4' => @$arrProxy[0],
             'port' => @$arrProxy[1],
+            'username' => $user,
+            'password' => $pass,
             'live' => 1,
             'enable' => 1,
             'status' => 1

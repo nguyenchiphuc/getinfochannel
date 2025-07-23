@@ -23,7 +23,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('update:proxy')->dailyAt('00:00');
         $schedule->command('delete:channel')->cron('0 */6 * * *');
         $schedule->command('update:videos')->cron('*/4 * * * *');
-        $schedule->command('get:proxy-sheet')->cron('*/10 * * * *');
+        $schedule->command('get:proxy-sheet')->cron('*/20 * * * *');
     }
 
     /**
