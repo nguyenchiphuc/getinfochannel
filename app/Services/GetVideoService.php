@@ -518,9 +518,6 @@ class GetVideoService
         if(count($listVideo) == 0) {
             $listVideo = $this->getListVideoFunc($channel, 60, 0, 'streams');
         }
-        if(count($listVideo) == 0) {
-            $listVideo = $this->getListVideoFunc($channel, 60, 0, 'streams');
-        }
         if(count($listVideo) == 0){
         // $listVideo = $this->getAPILink($channel->channel_id);
         } 
