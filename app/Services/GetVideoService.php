@@ -210,10 +210,42 @@ class GetVideoService
           }
           $shortsArr = [];
           try{
+            $newDateTime = Carbon::now();
             if(!empty($items->contents)){
               foreach ($items->contents->twoColumnBrowseResultsRenderer->tabs as $tabs) {
+                if(@$tabs->tabRenderer->selected) {
+                  if(empty($tabs->tabRenderer->content->richGridRenderer)){
+                    continue;
+                  }
+                  foreach ($tabs->tabRenderer->content->richGridRenderer->contents as $content) {
+                    if (@$content->richItemRenderer->content->lockupViewModel) {
+                      $lockupViewModel = $content->richItemRenderer->content->lockupViewModel;
+                      $contentId = @$lockupViewModel->contentId;
+                      $contentImage = @$lockupViewModel->contentImage;
+                      $time = @$contentImage->thumbnailViewModel->overlays[0]->thumbnailBottomOverlayViewModel->badges[0]->thumbnailBadgeViewModel->text;
+                      $timeArr = explode(":", $time);
+                      if (count($timeArr) > 2) {
+                      $durationTime = $timeArr[0] * 60 * 60 + $timeArr[1] * 60 + $timeArr[2];
+                      } else if (count($timeArr) > 1) {
+                      $durationTime = $timeArr[0] * 60 + $timeArr[1];
+                      } else {
+                      $durationTime = $timeArr[0];
+                      }
+                      $title = $lockupViewModel->metadata->lockupMetadataViewModel->title->content;
+                      $publishedTimeText = @$lockupViewModel->metadata->lockupMetadataViewModel->metadata->contentMetadataViewModel->metadataRows[0]->metadataParts[1]->text->content;
+                      $arr['duration'] = $durationTime;
+                      $arr['time'] = $time;
+                      $arr['id'] = $contentId;
+                      $arr['title'] = $title;
+                      $arr['publishedTimeText'] = @$publishedTimeText;
+                      $arr['publishedAt'] = $newDateTime->format('Y-m-d H:i:s');
+                      $array[] = $arr;
+                    }
+                  }
+                }
+              }
+              foreach ($items->contents->twoColumnBrowseResultsRenderer->tabs as $tabs) {
                 if ((strpos(@$tabs->tabRenderer->title, $titleGet) !== false) && !empty($tabs->tabRenderer)) {
-  
                   if(empty($tabs->tabRenderer->content->richGridRenderer)){
                     Log::error('not find tabRenderer->content->richGridRenderer ' . $channelId);
                     continue;
@@ -483,6 +515,9 @@ class GetVideoService
         // if(count($listVideo) == 0) {
         //   $listVideo = $this->getListVideoFuncFeatured($channel->channel_id, 60, 0);
         // }
+        if(count($listVideo) == 0) {
+            $listVideo = $this->getListVideoFunc($channel, 60, 0, 'streams');
+        }
         if(count($listVideo) == 0) {
             $listVideo = $this->getListVideoFunc($channel, 60, 0, 'streams');
         }
