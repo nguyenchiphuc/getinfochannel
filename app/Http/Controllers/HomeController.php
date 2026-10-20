@@ -16,6 +16,7 @@ class HomeController extends Controller
 {
   protected $proxy = '';
   protected $setting;
+  
   public function __construct() {
     $setting = Setting::where('id', 1)->first();
     $this->proxy = Proxy::getProxy();
